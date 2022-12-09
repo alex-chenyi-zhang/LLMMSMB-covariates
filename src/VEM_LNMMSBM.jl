@@ -5,12 +5,12 @@ Random.seed!()
 io = open("data/input/X.txt","r")
 X = readdlm(io, Float64)
 close(io)
-X = X[:,1:200]
+#X = X[:,1:200]
 
 io = open("data/input/Y.txt","r")
 Y = readdlm(io, Float64)
 close(io)
-Y = Y[1:200,1:200]
+#Y = Y[1:200,1:200]
 
 N = length(X[1,:])
 P = length(X[:,1])
@@ -89,7 +89,7 @@ function hessf!(H, η_i::Array{Float64, 1}, inv_Σ::Array{Float64, 2}, μ_i::Arr
 end
 
 ###########################################################################################################################
-n_runs = 3
+n_runs = 5
 for i_run in 1:n_runs
     # Initialize parameter values
     # variational parameters for the E-step
@@ -129,7 +129,7 @@ for i_run in 1:n_runs
 
     # run VEM algorithm
 
-    n_iterations = 25
+    n_iterations = 150
     elbows = zeros(n_iterations)
     elbows[1] = ELBO(ϕ, λ, ν, Σ, σ_2, B, ρ, μ)
     println(elbows[1])
