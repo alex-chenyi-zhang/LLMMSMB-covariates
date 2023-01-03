@@ -1,6 +1,6 @@
 include("LNMMSBM_functions.jl")
 
-function run_inference(n_iter::Int, start_node::Int, end_node::Int, n_runs::Int, covariate_file::String, map_file::String)
+function run_inference(n_iter::Int, start_node::Int, end_node::Int, n_runs::Int, covariate_file::String, map_file::String, K::Int)
     # get observed data and known covariates
     io = open(covariate_file,"r")
     X = readdlm(io, Float64; header=true)[1]
@@ -14,7 +14,7 @@ function run_inference(n_iter::Int, start_node::Int, end_node::Int, n_runs::Int,
 
     N = length(X[1,:])
     P = length(X[:,1])
-    K = 4     # I know that the data was generate with K = 4. In principle one should do model selection to discover it
+    #K = 4     # I know that the data was generate with K = 4. In principle one should do model selection to discover it
     println(P)
 
     for i_run in 1:n_runs
@@ -81,17 +81,23 @@ function run_inference(n_iter::Int, start_node::Int, end_node::Int, n_runs::Int,
             mkdir("data/preliminary_results/")
         end
 
-        open("data/preliminary_results/thetas_$(covariate_file[13:end]).txt", "a") do io
+        open("data/preliminary_results/thetas_$(N)_$(K)_$(covariate_file[13:end])", "a") do io
             writedlm(io, thetas')
         end
-        open("data/preliminary_results/elbows_$(covariate_file[13:end]).txt", "a") do io
+        open("data/preliminary_results/elbows_$(N)_$(K)_$(covariate_file[13:end])", "a") do io
             writedlm(io, elbows')
         end
-        open("data/preliminary_results/pred_map_$(covariate_file[13:end]).txt", "a") do io
+        open("data/preliminary_results/pred_map_$(N)_$(K)_$(covariate_file[13:end])", "a") do io
             writedlm(io, A_pred)
         end
-        open("data/preliminary_results/B_$(covariate_file[13:end]).txt", "a") do io
+        open("data/preliminary_results/B_$(N)_$(K)_$(covariate_file[13:end])", "a") do io
             writedlm(io, B)
+        end
+        open("data/preliminary_results/Sigma_$(N)_$(K)_$(covariate_file[13:end])", "a") do io
+            writedlm(io, Σ)
+        end
+        open("data/preliminary_results/Theta_$(N)_$(K)_$(covariate_file[13:end])", "a") do io
+            writedlm(io, Γ)
         end
     end
 end
