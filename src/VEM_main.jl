@@ -31,7 +31,7 @@ function run_inference(n_iter::Int, start_node::Int, end_node::Int, n_runs::Int,
         # parameters to be optimized in the M-step
         #Σ = Matrix(1.0I, K, K)    # global covariance matrix
         Σ = rand(Wishart(K,Matrix(.5I,K, K)))
-        σ_2 = rand(Gamma(1,1), K);      # prior covariance on the transformation coefficients Γ
+        σ_2 = rand(InverseGamma(1,1), K);      # prior covariance on the transformation coefficients Γ
 
         B = zeros(K,K)
         for k in 1:K
@@ -77,27 +77,41 @@ function run_inference(n_iter::Int, start_node::Int, end_node::Int, n_runs::Int,
                 A_expected[j,i] = A_expected[i,j]
             end
         end
+        nu_matrix = zeros(N,K*K)
+        for i in 1:N
+            nu_matrix[i,:] .= [ν[i]...]
+        end
+
         if !isdir("data/preliminary_results/")
             mkdir("data/preliminary_results/")
         end
 
-        open("data/preliminary_results/thetas_$(N)_$(K)_$(covariate_file[13:end])", "a") do io
+        open("data/preliminary_results/thetas_$(N)_$(K)$(covariate_file[13:end])", "a") do io
             writedlm(io, thetas')
         end
-        open("data/preliminary_results/elbows_$(N)_$(K)_$(covariate_file[13:end])", "a") do io
+        open("data/preliminary_results/elbows_$(N)_$(K)$(covariate_file[13:end])", "a") do io
             writedlm(io, elbows')
         end
-        open("data/preliminary_results/pred_map_$(N)_$(K)_$(covariate_file[13:end])", "a") do io
+        open("data/preliminary_results/nu_$(N)_$(K)$(covariate_file[13:end])", "a") do io
+            writedlm(io, nu_matrix)
+        end
+        open("data/preliminary_results/lambda_$(N)_$(K)$(covariate_file[13:end])", "a") do io
+            writedlm(io, λ')
+        end
+        open("data/preliminary_results/pred_map_$(N)_$(K)$(covariate_file[13:end])", "a") do io
             writedlm(io, A_pred)
         end
-        open("data/preliminary_results/B_$(N)_$(K)_$(covariate_file[13:end])", "a") do io
+        open("data/preliminary_results/B_$(N)_$(K)$(covariate_file[13:end])", "a") do io
             writedlm(io, B)
         end
-        open("data/preliminary_results/Sigma_$(N)_$(K)_$(covariate_file[13:end])", "a") do io
+        open("data/preliminary_results/Sigma_$(N)_$(K)$(covariate_file[13:end])", "a") do io
             writedlm(io, Σ)
         end
-        open("data/preliminary_results/Theta_$(N)_$(K)_$(covariate_file[13:end])", "a") do io
+        open("data/preliminary_results/Gamma_$(N)_$(K)$(covariate_file[13:end])", "a") do io
             writedlm(io, Γ)
+        end
+        open("data/preliminary_results/sigma_$(N)_$(K)$(covariate_file[13:end])", "a") do io
+            writedlm(io, σ_2')
         end
     end
 end

@@ -117,14 +117,40 @@ function Estep_multinomial!(ϕ::Array{Float64, 3}, λ::Array{Float64, 2}, B::Arr
     end
 end
 
+#function Mstep_logitNorm!(ϕ::Array{Float64, 3}, λ::Array{Float64, 2}, ν::Vector{Matrix{Float64}},
+#    Σ::Array{Float64, 2}, σ_2::Array{Float64, 1}, μ::Array{Float64, 2}, Γ::Array{Float64, 2}, X::Array{Float64, 2}, N::Int, K::Int, P::Int)
+#    for m in 1:20
+#        for k in 1:K
+#            #Γ[k,:] = inv(X*X' + diagm(ones(P)/σ_2[k]))*(X*λ[:,k])
+#            #σ_2[k] = (0.5 + sum(Γ[k,:].^2))/(0.5 + P)
+#            Γ[k,:] = inv(X*X' + diagm(ones(P)/σ_2[k]))*(X*λ[:,k])
+#            σ_2[k] = (2 + sum(Γ[k,:].^2))/(2 + P)
+#        end
+#
+#    end
+#
+#    μ = Γ * X
+#
+#    Σ .= zeros(K,K)
+#    for i in 1:N
+#        Σ .+= 1/N * (ν[i] .+ (λ[i,:] .- μ[:,i])*(λ[i,:] .- μ[:,i])')
+#    end
+#end
+
 function Mstep_logitNorm!(ϕ::Array{Float64, 3}, λ::Array{Float64, 2}, ν::Vector{Matrix{Float64}},
     Σ::Array{Float64, 2}, σ_2::Array{Float64, 1}, μ::Array{Float64, 2}, Γ::Array{Float64, 2}, X::Array{Float64, 2}, N::Int, K::Int, P::Int)
-    for m in 1:5
-        for k in 1:K
-            Γ[k,:] = inv(X*X' + diagm(ones(P)/σ_2[k]))*(X*λ[:,k])
-            σ_2[k] = (0.5 + sum(Γ[k,:].^2))/(0.5 + P)
-        end
+    a0 = 1.0
+    b0 = 1.0
 
+    for k in 1:K
+        β_N = 0.5
+        for m in 1:5
+            σ_2[k] = (b0 + 0.5*sum(Γ[k,:].^2)) / (a0 + 0.5*P)
+            S_N = inv(β_N*X*X' + diagm(ones(P)/σ_2[k]))
+            Γ[k,:] = β_N * S_N*(X*λ[:,k])
+            β_N = N/2 * (dot(λ[:,k],λ[:,k])/2 - dot(Γ[k,:], X*λ[:,k]) + 0.5*tr((X * X')*(Γ[k,:]*Γ[k,:]' .+ S_N)) )^(-1)
+        end
+        println(β_N)
     end
 
     μ = Γ * X
