@@ -276,7 +276,7 @@ function run_inference_multi(n_iter::Int, n_runs::Int, covariate_file_names::Str
                 writedlm(io, nu_matrix)
             end
             open("data/preliminary_results/multi_region/lambda_$(N)_$(K)$(covariate_files[i_region][13:end])", "a") do io
-                writedlm(io, λ)
+                writedlm(io, λ[:,(i_region-1)*N+1:i_region*N])
             end
         end
 
