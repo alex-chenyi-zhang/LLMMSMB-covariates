@@ -194,17 +194,7 @@ function run_inference_multi(n_iter::Int, n_runs::Int, covariate_file_names::Str
                 ν[i_region][:,:,i] = rand(Wishart(K,Matrix(.5I,K, K)))
             end
         end
-#########################################################
-        for i_region in 2:n_regions
-            for i in 1:N
-                for j in 1:N
-                    ϕ[i_region][i,j,:] .= ϕ[1][i,j,:]
-                end
-                ν[i_region][:,:,i] = ν[1][:,:,i]
-            end
-            λ[:,(i_region-1)*N+1:(i_region)*N] .= λ[:,1:N]
-        end
-#########################################################
+
         # parameters to be optimized in the M-step
         #Σ = Matrix(1.0I, K, K)    # global covariance matrix
         Σ = rand(Wishart(K,Matrix(.5I,K, K)))
