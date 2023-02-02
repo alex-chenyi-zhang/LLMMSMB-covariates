@@ -2,13 +2,13 @@ using Random, Distributions, StatsBase, LinearAlgebra, DelimitedFiles, Optim
 Random.seed!()
 
 # This function computes the approximate ELBO of the model
-function ELBO(ϕ::Array{Float64, 3}, λ::Array{Float64, 2}, ν::Vector{Matrix{Float64}},
-    Σ::Array{Float64, 2}, σ_2::Array{Float64, 1}, B::Array{Float64, 2}, ρ::Float64, μ::Array{Float64, 2}, Y::Array{Float64, 2}, K::Int, N::Int)
+function ELBO(ϕ::Array{Float64, 3}, λ, ν::Array{Float64, 3},
+    Σ::Array{Float64, 2}, σ_2::Array{Float64, 1}, B::Array{Float64, 2}, ρ::Float64, μ, Y::Array{Float64, 2}, K::Int, N::Int)
     apprELBO = 0.0
     inv_Σ = inv(Σ)
     apprELBO = 0.5 * N * log(det(inv_Σ))
     for i in 1:N
-        apprELBO -= 0.5 * (dot(λ[i,:] .- μ[:,i], inv_Σ, λ[i,:] .- μ[:,i]) + tr(inv_Σ*ν[i])) #first 2 terms
+        apprELBO -= 0.5 * (dot(λ[:,i] .- μ[:,i], inv_Σ, λ[:,i] .- μ[:,i]) + tr(inv_Σ*ν[:,:,i])) #first 2 terms
     end
 
     for k in 1:K
@@ -24,19 +24,19 @@ function ELBO(ϕ::Array{Float64, 3}, λ::Array{Float64, 2}, ν::Vector{Matrix{Fl
     for j in 1:N
         for i in 1:N
             if i != j
-                apprELBO += dot(ϕ[i,j,:],λ[i,:])# vcat(λ[i,:], 1.0)) #third term
+                apprELBO += dot(ϕ[i,j,:],λ[:,i])# vcat(λ[:,i], 1.0)) #third term
             end
         end
     end
 
     for i in 1:N
         theta = zeros(K)
-        theta .= exp.(λ[i,:])  #exp.(vcat(λ[i,:], 1.0))
+        theta .= exp.(λ[:,i])  #exp.(vcat(λ[:,i], 1.0))
         theta /= sum(theta)
         # second line of the expression above
-        apprELBO -= (N-1) * ( (log(sum(exp.(λ[i,:])))) + 0.5*tr((diagm(theta) .- theta * theta')*ν[i]) )
+        apprELBO -= (N-1) * ( (log(sum(exp.(λ[:,i])))) + 0.5*tr((diagm(theta) .- theta * theta')*ν[:,:,i]) )
         #gaussian entropic term
-        apprELBO += 0.5*log(det(ν[i]))
+        apprELBO += 0.5*log(det(ν[:,:,i]))
     end
 
     #likelihood term
@@ -84,8 +84,8 @@ end
 
 ################################################################################
 # Function that perform the variational optimization
-function Estep_logitNorm!(ϕ::Array{Float64, 3}, λ::Array{Float64, 2}, ν::Vector{Matrix{Float64}},
-    inv_Σ::Array{Float64, 2}, μ::Array{Float64, 2}, N::Int, K::Int)
+function Estep_logitNorm!(ϕ::Array{Float64, 3}, λ, ν::Array{Float64, 3},
+    inv_Σ::Array{Float64, 2}, μ, N::Int, K::Int)
     G = zeros(K)
     H = zeros(K,K)
     for i in 1:N
@@ -94,18 +94,18 @@ function Estep_logitNorm!(ϕ::Array{Float64, 3}, λ::Array{Float64, 2}, ν::Vect
         res = optimize(η_i -> f(η_i, ϕ_i, inv_Σ, μ_i, N), (G, η_i) -> gradf!(G,η_i, ϕ_i, inv_Σ, μ_i, N), randn(K), BFGS())
         η_i = Optim.minimizer(res)
         hessf!(H, η_i, inv_Σ, μ_i, N)
-        λ[i,:] .= η_i
-        ν[i] .= inv(H)
+        λ[:,i] .= η_i
+        ν[:,:,i] .= Hermitian(inv(H))
     end
 end
 
-function Estep_multinomial!(ϕ::Array{Float64, 3}, λ::Array{Float64, 2}, B::Array{Float64, 2},
+function Estep_multinomial!(ϕ::Array{Float64, 3}, λ, B::Array{Float64, 2},
     ρ::Float64, Y::Array{Float64, 2}, N::Int, K::Int)
     for i in 1:N
         for j in 1:N
             if i != j
                 for k in 1:K
-                    logPi = λ[i,k]
+                    logPi = λ[k,i]
                     for g in 1:K
                         logPi += ϕ[j,i,g] * (Y[i,j]*log(B[k,g]*(1-ρ)) + (1-Y[i,j])*log(1-(1-ρ)*B[k,g]))
                     end
@@ -117,13 +117,13 @@ function Estep_multinomial!(ϕ::Array{Float64, 3}, λ::Array{Float64, 2}, B::Arr
     end
 end
 
-#function Mstep_logitNorm!(ϕ::Array{Float64, 3}, λ::Array{Float64, 2}, ν::Vector{Matrix{Float64}},
-#    Σ::Array{Float64, 2}, σ_2::Array{Float64, 1}, μ::Array{Float64, 2}, Γ::Array{Float64, 2}, X::Array{Float64, 2}, N::Int, K::Int, P::Int)
+#function Mstep_logitNorm!(ϕ::Array{Float64, 3}, λ, ν::Array{Float64, 3},
+#    Σ::Array{Float64, 2}, σ_2::Array{Float64, 1}, μ, Γ::Array{Float64, 2}, X::Array{Float64, 2}, N::Int, K::Int, P::Int)
 #    for m in 1:20
 #        for k in 1:K
-#            #Γ[k,:] = inv(X*X' + diagm(ones(P)/σ_2[k]))*(X*λ[:,k])
+#            #Γ[k,:] = inv(X*X' + diagm(ones(P)/σ_2[k]))*(X*λ[k,:])
 #            #σ_2[k] = (0.5 + sum(Γ[k,:].^2))/(0.5 + P)
-#            Γ[k,:] = inv(X*X' + diagm(ones(P)/σ_2[k]))*(X*λ[:,k])
+#            Γ[k,:] = inv(X*X' + diagm(ones(P)/σ_2[k]))*(X*λ[k,:])
 #            σ_2[k] = (2 + sum(Γ[k,:].^2))/(2 + P)
 #        end
 #
@@ -133,12 +133,12 @@ end
 #
 #    Σ .= zeros(K,K)
 #    for i in 1:N
-#        Σ .+= 1/N * (ν[i] .+ (λ[i,:] .- μ[:,i])*(λ[i,:] .- μ[:,i])')
+#        Σ .+= 1/N * (ν[:,:,i] .+ (λ[:,i] .- μ[:,i])*(λ[:,i] .- μ[:,i])')
 #    end
 #end
 
-function Mstep_logitNorm!(ϕ::Array{Float64, 3}, λ::Array{Float64, 2}, ν::Vector{Matrix{Float64}},
-    Σ::Array{Float64, 2}, σ_2::Array{Float64, 1}, μ::Array{Float64, 2}, Γ::Array{Float64, 2}, X::Array{Float64, 2}, N::Int, K::Int, P::Int)
+function Mstep_logitNorm!(λ, ν::Array{Float64, 3},
+    Σ::Array{Float64, 2}, σ_2::Array{Float64, 1}, μ, Γ::Array{Float64, 2}, X::Array{Float64, 2}, N::Int, K::Int, P::Int)
     a0 = 1.0
     b0 = 1.0
 
@@ -147,8 +147,8 @@ function Mstep_logitNorm!(ϕ::Array{Float64, 3}, λ::Array{Float64, 2}, ν::Vect
         for m in 1:5
             σ_2[k] = (b0 + 0.5*sum(Γ[k,:].^2)) / (a0 + 0.5*P)
             S_N = inv(β_N*X*X' + diagm(ones(P)/σ_2[k]))
-            Γ[k,:] = β_N * S_N*(X*λ[:,k])
-            β_N = N/2 * (dot(λ[:,k],λ[:,k])/2 - dot(Γ[k,:], X*λ[:,k]) + 0.5*tr((X * X')*(Γ[k,:]*Γ[k,:]' .+ S_N)) )^(-1)
+            Γ[k,:] = β_N * S_N*(X*λ[k,:])
+            β_N = N/2 * (dot(λ[k,:],λ[k,:])/2 - dot(Γ[k,:], X*λ[k,:]) + 0.5*tr((X * X')*(Γ[k,:]*Γ[k,:]' .+ S_N)) )^(-1)
         end
         println(β_N)
     end
@@ -157,7 +157,7 @@ function Mstep_logitNorm!(ϕ::Array{Float64, 3}, λ::Array{Float64, 2}, ν::Vect
 
     Σ .= zeros(K,K)
     for i in 1:N
-        Σ .+= 1/N * (ν[i] .+ (λ[i,:] .- μ[:,i])*(λ[i,:] .- μ[:,i])')
+        Σ .+= 1/N * (ν[:,:,i] .+ (λ[:,i] .- μ[:,i])*(λ[:,i] .- μ[:,i])')
     end
 end
 
@@ -180,11 +180,66 @@ function Mstep_blockmodel!(ϕ::Array{Float64, 3}, B::Array{Float64, 2}, ρ::Floa
 end
 
 ################################################################################
+################################################################################
+
+function Mstep_logitNorm_multi!(λ, ν::Vector{Array{Float64, 3}},
+    Σ::Array{Float64, 2}, σ_2::Array{Float64, 1}, μ, Γ::Array{Float64, 2}, X::Array{Float64, 2}, N::Int, K::Int, P::Int, n_regions::Int)
+    a0 = 1.0
+    b0 = 1.0
+
+    for k in 1:K
+        β_N = 0.5
+        for m in 1:3
+            σ_2[k] = (b0 + 0.5*sum(Γ[k,:].^2)) / (a0 + 0.5*P)
+            S_N = inv(β_N*X*X' + diagm(ones(P)/σ_2[k]))
+            Γ[k,:] = β_N * S_N*(X*λ[k,:])
+            β_N = N*n_regions/2 * (dot(λ[k,:],λ[k,:])/2 - dot(Γ[k,:], X*λ[k,:]) + 0.5*tr((X * X')*(Γ[k,:]*Γ[k,:]' .+ S_N)) )^(-1)
+        end
+        #println(β_N)
+    end
+
+    μ = Γ * X
+
+    Σ .= zeros(K,K)
+    for i_region in 1:n_regions
+        for i in 1:N
+            Σ .+= (ν[i_region][:,:,i] .+ (λ[:,i+(i_region-1)*N] .- μ[:,i+(i_region-1)*N])*(λ[:,i+(i_region-1)*N] .- μ[:,i+(i_region-1)*N])')
+        end
+    end
+    Σ .= Hermitian(Σ/(N*n_regions))
+
+end
+
+function Mstep_blockmodel_multi!(ϕ::Vector{Array{Float64, 3}}, B::Array{Float64, 2}, ρ::Float64,
+    Y::Array{Float64, 2}, N::Int, K::Int, n_regions::Int)
+    for k in 1:K
+        for g in 1:K
+            num = 0.
+            den = 0.
+            for i_region in 1:n_regions
+                for j in 1:N
+                    for i in 1:N
+                        phi_prod = ϕ[i_region][i,j,k]*ϕ[i_region][j,i,g]
+                        num += phi_prod*Y[i,j+(i_region-1)*N]
+                        den += phi_prod
+                    end
+                end
+            end
+            B[k,g] = num/(den*(1-ρ))
+        end
+    end
+end
+
+################################################################################
 # function to combine all together to actually run the VEM algorithm
 
-function run_VEM!(n_iterations::Int, ϕ::Array{Float64, 3}, λ::Array{Float64, 2}, ν::Vector{Matrix{Float64}},
+#function run_VEM!(n_iterations::Int, ϕ::Array{Float64, 3}, λ, ν::Array{Float64, 3},
+#function run_VEM!(n_iterations::Int, ϕ::Array{Float64, 3}, λ, ν::Array{Float64, 3},
+#    Σ::Array{Float64, 2}, σ_2::Array{Float64, 1}, B::Array{Float64, 2}, ρ::Float64,
+#    μ, Y::Array{Float64, 2}, X::Array{Float64, 2},Γ::Array{Float64, 2}, K::Int, N::Int, P::Int)
+function run_VEM!(n_iterations::Int, ϕ::Array{Float64, 3}, λ, ν::Array{Float64, 3},
     Σ::Array{Float64, 2}, σ_2::Array{Float64, 1}, B::Array{Float64, 2}, ρ::Float64,
-    μ::Array{Float64, 2}, Y::Array{Float64, 2}, X::Array{Float64, 2},Γ::Array{Float64, 2}, K::Int, N::Int, P::Int)
+    μ, Y::Array{Float64, 2}, X::Array{Float64, 2},Γ::Array{Float64, 2}, K::Int, N::Int, P::Int)
 
     elbows = zeros(n_iterations)
     elbows[1] = ELBO(ϕ, λ, ν, Σ, σ_2, B, ρ, μ, Y, K, N)
@@ -199,7 +254,7 @@ function run_VEM!(n_iterations::Int, ϕ::Array{Float64, 3}, λ::Array{Float64, 2
         Estep_logitNorm!(ϕ, λ, ν, inv_Σ, μ, N, K)
 
 
-        Mstep_logitNorm!(ϕ, λ, ν, Σ, σ_2, μ, Γ, X, N, K, P)
+        Mstep_logitNorm!(λ, ν, Σ, σ_2, μ, Γ, X, N, K, P)
         Mstep_blockmodel!(ϕ, B, ρ, Y, N, K)
         elbows[i_iter] = ELBO(ϕ, λ, ν, Σ, σ_2, B, ρ, μ, Y, K, N)
         println("iter num: ", i_iter, " ELBO  ", elbows[i_iter])
@@ -207,6 +262,44 @@ function run_VEM!(n_iterations::Int, ϕ::Array{Float64, 3}, λ::Array{Float64, 2
             break
         end
     end
+
+    return elbows
+end
+
+# second method for the function run_VEM that has an extra argument n_regins::Int
+# that allows to perform the inference if you have more data points
+function run_VEM!(n_iterations::Int, ϕ::Vector{Array{Float64, 3}}, λ, ν::Vector{Array{Float64, 3}},
+    Σ::Array{Float64, 2}, σ_2::Array{Float64, 1}, B::Array{Float64, 2}, ρ::Float64,
+    μ, Y::Array{Float64, 2}, X::Array{Float64, 2},Γ::Array{Float64, 2}, K::Int, N::Int, P::Int, n_regions::Int)
+
+    elbows = zeros(n_regions, n_iterations)
+    for i_region in 1:n_regions
+        elbows[i_region, 1] = ELBO(ϕ[i_region], λ[:,(i_region-1)*N+1:i_region*N], ν[i_region], Σ, σ_2, B, ρ, μ[:,(i_region-1)*N+1:i_region*N], Y[:,(i_region-1)*N+1:i_region*N], K, N)
+    end
+    println(elbows[:,1])
+
+    for i_iter in 2:n_iterations
+        inv_Σ = inv(Σ)
+        for i_region in 1:n_regions
+            Estep_logitNorm!(ϕ[i_region], @view(λ[:,(i_region-1)*N+1:i_region*N]), ν[i_region], inv_Σ, @view(μ[:,(i_region-1)*N+1:i_region*N]), N, K)
+            for m in 1:3
+            	Estep_multinomial!(ϕ[i_region], @view(λ[:,(i_region-1)*N+1:i_region*N]), B, ρ, Y[:,(i_region-1)*N+1:i_region*N], N, K)
+            end
+            Estep_logitNorm!(ϕ[i_region], @view(λ[:,(i_region-1)*N+1:i_region*N]), ν[i_region], inv_Σ, @view(μ[:,(i_region-1)*N+1:i_region*N]), N, K)
+            Mstep_logitNorm_multi!(λ, ν, Σ, σ_2, μ, Γ, X, N, K, P, n_regions)
+            Mstep_blockmodel_multi!(ϕ, B, ρ, Y, N, K, n_regions)
+        end
+
+
+        for i_region in 1:n_regions
+            elbows[i_region, i_iter] = ELBO(ϕ[i_region], λ[:,(i_region-1)*N+1:i_region*N], ν[i_region], Σ, σ_2, B, ρ, μ[:,(i_region-1)*N+1:i_region*N], Y[:,(i_region-1)*N+1:i_region*N], K, N)
+        end
+        println("iter num: ", i_iter, " ELBO  \n", elbows[:,i_iter])
+        if isnan(elbows[i_iter])
+            break
+        end
+    end
+
 
     return elbows
 end
