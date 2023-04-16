@@ -123,6 +123,149 @@ function run_inference(n_iter::Int, start_node::Int, end_node::Int, n_runs::Int,
     end
 end
 
+
+#########################################################################################################################à
+
+function run_inference_gauss(n_iter::Int, start_node::Int, end_node::Int, n_runs::Int, covariate_file::String, map_file::String, K::Int)
+    # get observed data and known covariates
+    io = open(covariate_file,"r")
+    X = readdlm(io, Float64; header=true)[1]
+    close(io)
+    X = X[:,start_node:end_node]
+
+    io = open(map_file,"r")
+    Y = readdlm(io, Float64)
+    close(io)
+    Y = Y[start_node:end_node,start_node:end_node]
+
+    N = length(X[1,:])
+    P = length(X[:,1])
+    #K = 4     # I know that the data was generate with K = 4. In principle one should do model selection to discover it
+    println(P)
+
+    for i_run in 1:n_runs
+        println("run number: ", i_run, )
+        ϕ = ones(N,N,K) #.* 1/K  # initialized as uniform distributions
+        for i in 1:N
+            for j in 1:N
+                ϕ[i,j,:] = rand(Dirichlet(K,0.5))
+            end
+        end
+        λ = randn(K,N)    # mean vectors for the gaussians for every node
+        #ν = [Matrix(1.0I, K, K) for i in 1:N] # covariance matrices for the gaussians. This is a vector of matrices
+        ν = zeros(K,K,N)
+        for i in 1:N
+            ν[:,:,i] = rand(Wishart(K,Matrix(.5I,K, K)))
+        end
+
+
+
+
+        # parameters to be optimized in the M-step
+        #Σ = Matrix(1.0I, K, K)    # global covariance matrix
+        Σ = rand(Wishart(K,Matrix(.5I,K, K)))
+        σ_2 = rand(InverseGamma(1,1), K)      # prior covariance on the transformation coefficients Γ
+        #like_var = rand(InverseGamma(1,1), 1)
+        #like_var[1]=0.2
+        like_var = zeros(K,K)
+        for k in 1:K
+            for g  in 1:k
+                like_var[k,g] = rand(InverseGamma(1,1))
+                like_var[g,k] = like_var[k,g]
+            end
+        end
+
+        B = zeros(K,K)
+        for k in 1:K
+            B[k,k] = randn()*0.2+1.0
+            for g in 1:k-1
+                B[k,g] = randn()*0.2
+                B[g,k] = B[k,g]
+            end
+        end
+        #B .+= Matrix(1.0I, K, K)*0.8
+
+        Γ = zeros(K,P)
+        for k in 1:K
+            Γ[k,:] .= randn(P)* sqrt(σ_2[k])
+        end
+
+        μ = Γ * X;
+        for i in 1:N
+            ϕ[i,i,:] .= 0
+        end
+
+        elbows = run_VEM_gauss!(n_iter, ϕ, λ, ν, Σ, σ_2, B, like_var, μ, Y, X, Γ, K, N, P)
+
+        # make predictions
+        thetas = zeros(K,N)
+        for i in 1:N
+            thetas[:,i] .= exp.(λ[:,i]) ./ sum(exp.(λ[:,i]))
+        end
+
+        like_std = sqrt.(like_var)
+        println(like_std)
+        A_pred = zeros(N,N)
+        A_expected = zeros(N,N)
+        for i in 1:N
+            for j in 1:i-1
+                z_i = sample(Weights(thetas[:,i]))
+                z_j = sample(Weights(thetas[:,j]))
+
+                r = B[z_i,z_j] #*(1-ρ) #*exp(-abs(i-j)/(N))
+                #if rand() < rate
+                #    A_pred[i,j] = 1
+                #    A_pred[j,i] = A_pred[i,j]
+                #end
+                A_expected[i,j] = r
+                A_expected[j,i] = A_expected[i,j]
+                A_pred[i,j] = rand(Normal(A_expected[i,j],like_std[z_i,z_j]))
+                A_pred[j,i] = A_pred[i,j]
+            end
+        end
+
+        nu_matrix = zeros(N,K*K)
+        for i in 1:N
+            nu_matrix[i,:] .= [ν[:,:,i]...]
+        end
+
+        if !isdir("data/preliminary_results/")
+            mkdir("data/preliminary_results/")
+        end
+
+        open("data/preliminary_results/thetas_$(N)_$(K)$(covariate_file[13:end])", "a") do io
+            writedlm(io, thetas)
+        end
+        open("data/preliminary_results/elbows_$(N)_$(K)$(covariate_file[13:end])", "a") do io
+            writedlm(io, elbows')
+        end
+        open("data/preliminary_results/nu_$(N)_$(K)$(covariate_file[13:end])", "a") do io
+            writedlm(io, nu_matrix)
+        end
+        open("data/preliminary_results/lambda_$(N)_$(K)$(covariate_file[13:end])", "a") do io
+            writedlm(io, λ)
+        end
+        open("data/preliminary_results/pred_map_$(N)_$(K)$(covariate_file[13:end])", "a") do io
+            writedlm(io, A_pred)
+        end
+        open("data/preliminary_results/B_$(N)_$(K)$(covariate_file[13:end])", "a") do io
+            writedlm(io, B)
+        end
+        open("data/preliminary_results/Sigma_$(N)_$(K)$(covariate_file[13:end])", "a") do io
+            writedlm(io, Σ)
+        end
+        open("data/preliminary_results/Gamma_$(N)_$(K)$(covariate_file[13:end])", "a") do io
+            writedlm(io, Γ)
+        end
+        open("data/preliminary_results/sigma_$(N)_$(K)$(covariate_file[13:end])", "a") do io
+            writedlm(io, σ_2')
+        end
+        open("data/preliminary_results/like_var_$(N)_$(K)$(covariate_file[13:end])", "a") do io
+            writedlm(io, like_var)
+        end
+    end
+end
+
 ## this is a slight variation of the previous function that allows for multiple regions to e considered together
 
 function run_inference_multi(n_iter::Int, n_runs::Int, covariate_file_names::String, map_file_names::String, K::Int)
@@ -358,7 +501,7 @@ function prova_identificabilita(n_iter::Int, covariate_file_names::String, map_f
         end
     end
 
-#########################################################
+    #########################################################
     # parameters to be optimized in the M-step
     #Σ = Matrix(1.0I, K, K)    # global covariance matrix
     Σ = rand(Wishart(K,Matrix(.5I,K, K)))
@@ -498,7 +641,7 @@ function prova_identificabilita_2(n_iter::Int, covariate_file_names::String, map
         end
     end
 
-#########################################################
+    #########################################################
     # parameters to be optimized in the M-step
     #Σ = Matrix(1.0I, K, K)    # global covariance matrix
     Σ = rand(Wishart(K,Matrix(.5I,K, K)))
