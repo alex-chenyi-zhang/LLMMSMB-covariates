@@ -279,6 +279,7 @@ function Mstep_logitNorm!(λ, ν::Array{Float64, 3},
     for i in 1:N
         Σ .+= 1/N * (ν[:,:,i] .+ (λ[:,i] .- μ[:,i])*(λ[:,i] .- μ[:,i])')
     end
+    Σ .= Hermitian(Σ)
 end
 
 function Mstep_blockmodel!(ϕ::Array{Float64, 3}, B::Array{Float64, 2}, ρ::Float64,
@@ -486,14 +487,14 @@ function run_VEM_gauss!(n_iterations::Int, ϕ::Array{Float64, 3}, λ, ν::Array{
         println("iter num: ", i_iter, " ELBO  ", elbows[i_iter])
         println("\n")
         #println("variance: ",like_var)
-        for k in 1:K
+        #=for k in 1:K
             println(round.(like_var[k,:]; sigdigits=4))
         end
         println("\n")
         for k in 1:K
             println(round.(B[k,:]; sigdigits=4))
         end
-        println("\n\n")
+        println("\n\n")=#
 
         #println(round.(σ_2; sigdigits=2))
         #println(round.(Γ; sigdigits=2))
