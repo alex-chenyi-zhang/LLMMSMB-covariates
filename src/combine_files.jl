@@ -1,12 +1,13 @@
 using DelimitedFiles
-N = 300
-for K in [4,5,6]
+N = 650
+for K in [10]
     #reg = "_$(N)_$(K)_1000_81000_100k_filter_offset.txt"
-    data_dir = "../data/preliminary_results/log_1000_81000_100k_oe_gf/"
-    reg = "_$(N)_$(K)_1000_81000_100k_filter_offset.txt"
-    #reg2 = "_$(N)_$(K)_1000_81000_100k_filter_offset.txt"
+    data_dir = "data/preliminary_results/log_chr2_1000_66000_100k_oe_gf2/"
+    reg = "_$(N)_$(K)_chr2_1000_66000_100k.txt"
+    #reg2 = "_$(N)_$(K)_chr2_1000_66000_100k.txt"
     println(K, "\n")
-    for iter in 1:3
+    n_iter = 8
+    for iter in 1:n_iter
         println("iter: ", iter)
         #### thetas
         println("thetas")
@@ -109,7 +110,7 @@ for K in [4,5,6]
         end
     end
 
-    for iter in 1:3
+    for iter in 1:n_iter
         rm(data_dir*"$(iter)_thetas"*reg)
         rm(data_dir*"$(iter)_elbows"*reg)
         rm(data_dir*"$(iter)_nu"*reg)
