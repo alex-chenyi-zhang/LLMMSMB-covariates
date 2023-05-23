@@ -228,39 +228,39 @@ function run_inference_gauss(n_iter::Int, start_node::Int, end_node::Int, n_runs
         for i in 1:N
             nu_matrix[i,:] .= [ν[:,:,i]...]
         end
-
-        if !isdir("data/preliminary_results/")
-            mkdir("data/preliminary_results/")
+        data_dir = "data/preliminary_results/$(map_file[14:end-4])/"
+        if !isdir(data_dir)
+            mkdir(data_dir)
         end
 
-        open("data/preliminary_results/$(i_run)_thetas_$(N)_$(K)$(covariate_file[13:end])", "a") do io
+        open("$(data_dir)$(i_run)_thetas_$(N)_$(K)$(covariate_file[13:end])", "a") do io
             writedlm(io, thetas)
         end
-        open("data/preliminary_results/$(i_run)_elbows_$(N)_$(K)$(covariate_file[13:end])", "a") do io
+        open("$(data_dir)$(i_run)_elbows_$(N)_$(K)$(covariate_file[13:end])", "a") do io
             writedlm(io, elbows')
         end
-        open("data/preliminary_results/$(i_run)_nu_$(N)_$(K)$(covariate_file[13:end])", "a") do io
+        open("$(data_dir)$(i_run)_nu_$(N)_$(K)$(covariate_file[13:end])", "a") do io
             writedlm(io, nu_matrix)
         end
-        open("data/preliminary_results/$(i_run)_lambda_$(N)_$(K)$(covariate_file[13:end])", "a") do io
+        open("$(data_dir)$(i_run)_lambda_$(N)_$(K)$(covariate_file[13:end])", "a") do io
             writedlm(io, λ)
         end
-        open("data/preliminary_results/$(i_run)_pred_map_$(N)_$(K)$(covariate_file[13:end])", "a") do io
+        open("$(data_dir)$(i_run)_pred_map_$(N)_$(K)$(covariate_file[13:end])", "a") do io
             writedlm(io, A_pred)
         end
-        open("data/preliminary_results/$(i_run)_B_$(N)_$(K)$(covariate_file[13:end])", "a") do io
+        open("$(data_dir)$(i_run)_B_$(N)_$(K)$(covariate_file[13:end])", "a") do io
             writedlm(io, B)
         end
-        open("data/preliminary_results/$(i_run)_Sigma_$(N)_$(K)$(covariate_file[13:end])", "a") do io
+        open("$(data_dir)$(i_run)_Sigma_$(N)_$(K)$(covariate_file[13:end])", "a") do io
             writedlm(io, Σ)
         end
-        open("data/preliminary_results/$(i_run)_Gamma_$(N)_$(K)$(covariate_file[13:end])", "a") do io
+        open("$(data_dir)$(i_run)_Gamma_$(N)_$(K)$(covariate_file[13:end])", "a") do io
             writedlm(io, Γ)
         end
-        open("data/preliminary_results/$(i_run)_sigma_$(N)_$(K)$(covariate_file[13:end])", "a") do io
+        open("$(data_dir)$(i_run)_sigma_$(N)_$(K)$(covariate_file[13:end])", "a") do io
             writedlm(io, σ_2')
         end
-        open("data/preliminary_results/$(i_run)_like_var_$(N)_$(K)$(covariate_file[13:end])", "a") do io
+        open("$(data_dir)$(i_run)_like_var_$(N)_$(K)$(covariate_file[13:end])", "a") do io
             writedlm(io, like_var)
         end
     end
