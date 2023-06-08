@@ -3,3 +3,4 @@ src/.ipynb_checkpoints/
 nohup.out
 *.csv
 data/preliminary_results/
+src/visualize_results.ipynb
