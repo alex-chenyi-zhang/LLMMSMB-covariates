@@ -155,6 +155,84 @@ function ELBO_gauss(ϕ::Array{Float64, 3}, λ, ν::Array{Float64, 3},
 end
 
 
+
+# This function computes the approximate ELBO of the model with the gaussian likelihood
+# but with a shared mean vector for the logistic normal prior instead of a node covariate
+# dependent one.
+function ELBO_gauss(ϕ::Array{Float64, 3}, λ, ν::Array{Float64, 3},
+    Σ::Array{Float64, 2},B::Array{Float64, 2}, μ, Y::Array{Float64, 2}, K::Int, N::Int, like_var::Array{Float64, 2})
+    apprELBO = 0.0
+    inv_Σ = inv(Σ)
+    apprELBO = 0.5 * N * log(det(inv_Σ))
+    for i in 1:N
+        apprELBO -= 0.5 * (dot(λ[:,i] .- μ, inv_Σ, λ[:,i] .- μ) + tr(inv_Σ*ν[:,:,i])) #first 2 terms
+    end
+
+    if isnan(apprELBO)
+        println("ERROR 1")
+        #break
+    end
+
+    for k in 1:K
+        for j in 1:N
+            for i in 1:N
+                if i != j && ϕ[i,j,k] > eps()
+                    apprELBO -= ϕ[i,j,k]*log(ϕ[i,j,k]) #last entropic term
+                end
+            end
+        end
+    end
+    if isnan(apprELBO)
+        println("ERROR 2")
+        #break
+    end
+
+    for j in 1:N
+        for i in 1:N
+            if i != j
+                apprELBO += dot(ϕ[i,j,:],λ[:,i])# vcat(λ[:,i], 1.0)) #third term
+            end
+        end
+    end
+    if isnan(apprELBO)
+        println("ERROR 3")
+        #break
+    end
+
+    for i in 1:N
+        theta = zeros(K)
+        theta .= exp.(λ[:,i])  #exp.(vcat(λ[:,i], 1.0))
+        theta /= sum(theta)
+        # second line of the expression above
+        apprELBO -= (N-1) * ( (log(sum(exp.(λ[:,i])))) + 0.5*tr((diagm(theta) .- theta * theta')*ν[:,:,i]) )
+        #gaussian entropic term
+        apprELBO += 0.5*log(det(ν[:,:,i]))
+    end
+    if isnan(apprELBO)
+        println("ERROR 4")
+        #break
+    end
+    #println("Partial ELBO: ", apprELBO)
+    #likelihood term
+    for i in 1:N
+        for j in 1:i-1
+            for k in 1:K
+                for g in 1:K
+                    #logP = -(0.5*(Y[i,j] - B[k,g])^2)/like_var[1] -0.5*log(like_var[1])
+                    logP = -(0.5*(Y[i,j] - B[k,g])^2)/like_var[k,g] -0.5*log(like_var[k,g])
+                    apprELBO += ϕ[i,j,k]*ϕ[j,i,g]*logP
+                end
+            end
+        end
+    end
+    #apprELBO += -0.25*N*(N-1)*log(like_var[1])
+    if isnan(apprELBO)
+        println("ERROR 5")
+        #break
+    end
+    return apprELBO
+end
+
 #=
 In the E-step due to the non-conjugancy of the logistic normal with the multinomial
 we resort to a gaussian approximation of the variational porsterior (Wang, Blei, 2013).
@@ -163,18 +241,21 @@ The approximations equals an optimizetion process that we characterize with the 
 
 function f(η_i::Array{Float64, 1}, ϕ_i::Array{Float64, 1}, inv_Σ::Array{Float64, 2}, μ_i::Array{Float64},N::Int)
     f = 0.5 * dot(η_i .- μ_i, inv_Σ, η_i .- μ_i) - dot(η_i, ϕ_i) +(N-1)*log(sum(exp.(η_i)))
+    #f = 0.5 * dot(η_i .- μ_i, inv_Σ, η_i .- μ_i) - dot(η_i, ϕ_i)/(N-1) +log(sum(exp.(η_i)))
     return f
 end
 
 function gradf!(G, η_i::Array{Float64, 1}, ϕ_i::Array{Float64, 1}, inv_Σ::Array{Float64, 2}, μ_i::Array{Float64},N::Int)
-    G .= exp.(η_i)/sum(exp.(η_i))*(N-1) .- ϕ_i .+ inv_Σ*(η_i .- μ_i)
-    #G .= -exp.(η_i)/sum(exp.(η_i)) .+ ϕ_i/(N-1) - inv_Σ*(η_i .- μ_i)/(N-1)
+    G .= softmax(η_i)*(N-1) .- ϕ_i .+ inv_Σ*(η_i .- μ_i)
+    #G .= exp.(η_i)/sum(exp.(η_i))*(N-1) .- ϕ_i .+ inv_Σ*(η_i .- μ_i)
+    #G .= exp.(η_i)/sum(exp.(η_i)) .- ϕ_i/(N-1) .+ inv_Σ*(η_i .- μ_i)
 end
 
 function hessf!(H, η_i::Array{Float64, 1}, inv_Σ::Array{Float64, 2}, μ_i::Array{Float64},N::Int)
-    theta = exp.(η_i)/sum(exp.(η_i))
+    #theta = exp.(η_i)/sum(exp.(η_i))
+    theta = softmax(η_i)
     H .=  (N-1)*(diagm(theta) .- theta*theta') .+ inv_Σ
-    #H .= - (diagm(theta) .- theta*theta') .- inv_Σ/(N-1)
+    #H .=  (diagm(theta) .- theta*theta') .+ inv_Σ
 end
 
 
@@ -190,6 +271,28 @@ function Estep_logitNorm!(ϕ::Array{Float64, 3}, λ, ν::Array{Float64, 3},
         res = optimize(η_i -> f(η_i, ϕ_i, inv_Σ, μ_i, N), (G, η_i) -> gradf!(G,η_i, ϕ_i, inv_Σ, μ_i, N), randn(K), BFGS(linesearch = LineSearches.BackTracking(order=2)))#BFGS())
         η_i = Optim.minimizer(res)
         hessf!(H, η_i, inv_Σ, μ_i, N)
+        λ[:,i] .= η_i
+        ν[:,:,i] .= Hermitian(inv(H))
+    end
+end
+# without covariates
+function Estep_logitNorm_noX!(ϕ::Array{Float64, 3}, λ, ν::Array{Float64, 3},
+    inv_Σ::Array{Float64, 2}, μ, N::Int, K::Int)
+    G = zeros(K)
+    H = zeros(K,K)
+    for i in 1:N
+        ϕ_i = sum(ϕ[i,:,:],dims=1)[1,:]
+        res = optimize(η_i -> f(η_i, ϕ_i, inv_Σ, μ, N), (G, η_i) -> gradf!(G,η_i, ϕ_i, inv_Σ, μ, N), randn(K), BFGS(linesearch = LineSearches.BackTracking(order=2)))#BFGS())
+        η_i = Optim.minimizer(res)
+        hessf!(H, η_i, inv_Σ, μ, N)
+
+
+        ###
+        #η_i .-= η_i[K]
+
+        ###
+
+
         λ[:,i] .= η_i
         ν[:,:,i] .= Hermitian(inv(H))
     end
@@ -264,7 +367,7 @@ function Mstep_logitNorm!(λ, ν::Array{Float64, 3},
 
     for k in 1:K
         β_N = 0.5
-        for m in 1:5
+        for m in 1:20
             σ_2[k] = (b0 + 0.5*sum(Γ[k,:].^2)) / (a0 + 0.5*P)
             S_N = inv(β_N*X*X' + diagm(ones(P)/σ_2[k]))
             Γ[k,:] = β_N * S_N*(X*λ[k,:])
@@ -278,6 +381,22 @@ function Mstep_logitNorm!(λ, ν::Array{Float64, 3},
     Σ .= zeros(K,K)
     for i in 1:N
         Σ .+= 1/N * (ν[:,:,i] .+ (λ[:,i] .- μ[:,i])*(λ[:,i] .- μ[:,i])')
+    end
+    Σ .= Hermitian(Σ)
+end
+
+function Mstep_logitNorm_noX!(λ, ν::Array{Float64, 3},
+    Σ::Array{Float64, 2}, μ, N::Int, K::Int)
+    μ .= zeros(K)
+
+
+    for i in 1:N
+        μ .+= 1/N * λ[:,i]
+        #μ .= inv(Matrix(1.0I,K,K) .+ Σ/N)*μ
+    end
+    Σ .= zeros(K,K)
+    for i in 1:N
+        Σ .+= 1/N * (ν[:,:,i] .+ (λ[:,i] .- μ)*(λ[:,i] .- μ)')
     end
     Σ .= Hermitian(Σ)
 end
@@ -499,6 +618,113 @@ function run_VEM_gauss!(n_iterations::Int, ϕ::Array{Float64, 3}, λ, ν::Array{
         #println(round.(σ_2; sigdigits=2))
         #println(round.(Γ; sigdigits=2))
         #println(round.(Σ; sigdigits=2), "\n\n")
+        if isnan(elbows[i_iter])
+            break
+        end
+    end
+
+    return elbows
+end
+
+
+##########################################################################################
+
+#inference with gaussian matrices but with a different update scheduling to "equilibrate"
+# to non-random initialization for Gamma
+
+function run_VEM_gauss_2!(n_iterations::Int, ϕ::Array{Float64, 3}, λ, ν::Array{Float64, 3},
+    Σ::Array{Float64, 2}, σ_2::Array{Float64, 1}, B::Array{Float64, 2}, like_var::Array{Float64, 2},
+    μ, Y::Array{Float64, 2}, X::Array{Float64, 2},Γ::Array{Float64, 2}, K::Int, N::Int, P::Int)
+
+    elbows = zeros(n_iterations)
+    elbows[1] = ELBO_gauss(ϕ, λ, ν, Σ, σ_2, B, μ, Y, K, N, like_var)
+    println(elbows[1])
+
+    for i_iter in 1:n_iterations
+        inv_Σ = inv(Σ)
+
+
+        Estep_logitNorm!(ϕ, λ, ν, inv_Σ, μ, N, K)
+        for m in 1:5
+        	Estep_multinomial_gauss!(ϕ, λ, B, Y, N, K, like_var)
+        end
+
+
+        Estep_logitNorm!(ϕ, λ, ν, inv_Σ, μ, N, K)
+
+        if (i_iter > 30)
+            for m in 1:5
+                Mstep_logitNorm!(λ, ν, Σ, σ_2, μ, Γ, X, N, K, P)
+                Estep_logitNorm!(ϕ, λ, ν, inv_Σ, μ, N, K)
+            end
+        end
+        if (i_iter < 30)
+            for m in 1:5
+                Σ .= zeros(K,K)
+                for i in 1:N
+                    Σ .+= 1/N * (ν[:,:,i] .+ (λ[:,i] .- μ)*(λ[:,i] .- μ)')
+                end
+                Σ .= Hermitian(Σ)
+
+                Estep_logitNorm!(ϕ, λ, ν, inv_Σ, μ, N, K)
+            end
+        end
+
+        Mstep_blockmodel_gauss!(ϕ, B, like_var, Y, N, K)
+        elbows[i_iter] = ELBO_gauss(ϕ, λ, ν, Σ, σ_2, B, μ, Y, K, N, like_var)
+        println("iter num: ", i_iter, " ELBO  ", elbows[i_iter])
+        println("\n")
+        #println("variance: ",like_var)
+        #=for k in 1:K
+            println(round.(like_var[k,:]; sigdigits=4))
+        end
+        println("\n")
+        for k in 1:K
+            println(round.(B[k,:]; sigdigits=4))
+        end
+        println("\n\n")=#
+
+        #println(round.(σ_2; sigdigits=2))
+        #println(round.(Γ; sigdigits=2))
+        #println(round.(Σ; sigdigits=2), "\n\n")
+        if isnan(elbows[i_iter])
+            break
+        end
+    end
+
+    return elbows
+end
+
+
+
+#inference with gaussian matrices BUT NO COVARIATES
+
+function run_VEM_gauss!(n_iterations::Int, ϕ::Array{Float64, 3}, λ, ν::Array{Float64, 3},
+    Σ::Array{Float64, 2}, B::Array{Float64, 2}, like_var::Array{Float64, 2},
+    μ, Y::Array{Float64, 2}, K::Int, N::Int)
+
+    elbows = zeros(n_iterations)
+    elbows[1] = ELBO_gauss(ϕ, λ, ν, Σ, B, μ, Y, K, N, like_var)
+    println(elbows[1])
+
+    for i_iter in 2:n_iterations
+        inv_Σ = inv(Σ)
+
+
+        Estep_logitNorm_noX!(ϕ, λ, ν, inv_Σ, μ, N, K)
+        for m in 1:5
+        	Estep_multinomial_gauss!(ϕ, λ, B, Y, N, K, like_var)
+        end
+
+
+        Estep_logitNorm_noX!(ϕ, λ, ν, inv_Σ, μ, N, K)
+
+
+        Mstep_logitNorm_noX!(λ, ν, Σ, μ, N, K)
+        Mstep_blockmodel_gauss!(ϕ, B, like_var, Y, N, K)
+        elbows[i_iter] = ELBO_gauss(ϕ, λ, ν, Σ, B, μ, Y, K, N, like_var)
+        println("iter num: ", i_iter, " ELBO  ", elbows[i_iter])
+        println("\n")
         if isnan(elbows[i_iter])
             break
         end

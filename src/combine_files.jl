@@ -1,12 +1,12 @@
 using DelimitedFiles
-N = 650
-for K in [10]
+N = 400
+for K in [8]
     #reg = "_$(N)_$(K)_1000_81000_100k_filter_offset.txt"
-    data_dir = "data/preliminary_results/log_chr2_1000_66000_100k_oe_gf2/"
-    reg = "_$(N)_$(K)_chr2_1000_66000_100k.txt"
+    data_dir = "data/preliminary_results/no_covariates/log_chr2_1000_66000_100k_oe_gf2/"
+    reg = "_$(N)_$(K)_log_chr2_1000_66000_100k_oe_gf2.txt"
     #reg2 = "_$(N)_$(K)_chr2_1000_66000_100k.txt"
     println(K, "\n")
-    n_iter = 8
+    n_iter = 4
     for iter in 1:n_iter
         println("iter: ", iter)
         #### thetas
@@ -78,7 +78,7 @@ for K in [10]
         open(data_dir*"Sigma"*reg, "a") do io
             writedlm(io, Sigma)
         end
-
+#=
         #### Gamma
         println("Gamma")
         io = open(data_dir*"$(iter)_Gamma"*reg, "r")
@@ -98,7 +98,7 @@ for K in [10]
         open(data_dir*"sigma"*reg, "a") do io
             writedlm(io, sigma_2)
         end
-
+=#
         #### like_var
         println("like_var")
         io = open(data_dir*"$(iter)_like_var"*reg, "r")
@@ -118,8 +118,8 @@ for K in [10]
         rm(data_dir*"$(iter)_pred_map"*reg)
         rm(data_dir*"$(iter)_B"*reg)
         rm(data_dir*"$(iter)_Sigma"*reg)
-        rm(data_dir*"$(iter)_Gamma"*reg)
-        rm(data_dir*"$(iter)_sigma"*reg)
+        #rm(data_dir*"$(iter)_Gamma"*reg)
+        #rm(data_dir*"$(iter)_sigma"*reg)
         rm(data_dir*"$(iter)_like_var"*reg)
 
     end
