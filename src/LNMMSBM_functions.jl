@@ -393,13 +393,13 @@ function Mstep_logitNorm_flux!(λ, ν::Array{Float64, 3},
     ####
     lr = 0.01
     model = Chain(Dense(P,K, bias=false))
-    model[1].weight .= Γ
+    model[1].weight .= Float32.(Γ)
     ps = Flux.params(model)
     opt = ADAM(lr)
     L(a,b) = (Flux.Losses.kldivergence(softmax(model(a)), softmax(b)))
     max_iter = 50
     for i in 1:max_iter
-        gs = gradient(() -> L(X, λ), ps)
+        gs = gradient(() -> L(Float32.(X), Float32.(λ)), ps)
         Flux.Optimise.update!(opt, ps, gs)
     end
     Γ .= model[1].weight
