@@ -385,6 +385,37 @@ function Mstep_logitNorm!(λ, ν::Array{Float64, 3},
     Σ .= Hermitian(Σ)
 end
 
+################################################################################
+
+function Mstep_logitNorm_flux!(λ, ν::Array{Float64, 3},
+    Σ::Array{Float64, 2}, σ_2::Array{Float64, 1}, μ, Γ::Array{Float64, 2}, X::Array{Float64, 2}, N::Int, K::Int, P::Int)
+
+    ####
+    lr = 0.01
+    model = Chain(Dense(P,K, bias=false))
+    model[1].weight .= Γ
+    ps = Flux.params(model)
+    opt = ADAM(lr)
+    L(a,b) = (Flux.Losses.kldivergence(softmax(model(a)), softmax(b)))
+    max_iter = 50
+    for i in 1:max_iter
+        gs = gradient(() -> L(X, λ), ps)
+        Flux.Optimise.update!(opt, ps, gs)
+    end
+    Γ .= model[1].weight
+    μ = Γ * X
+    ####
+
+    Σ .= zeros(K,K)
+    for i in 1:N
+        Σ .+= 1/N * (ν[:,:,i] .+ (λ[:,i] .- μ[:,i])*(λ[:,i] .- μ[:,i])')
+    end
+    Σ .= Hermitian(Σ)
+end
+
+################################################################################
+
+
 function Mstep_logitNorm_noX!(λ, ν::Array{Float64, 3},
     Σ::Array{Float64, 2}, μ, N::Int, K::Int)
     μ .= zeros(K)
@@ -400,6 +431,9 @@ function Mstep_logitNorm_noX!(λ, ν::Array{Float64, 3},
     end
     Σ .= Hermitian(Σ)
 end
+
+################################################################################
+
 
 function Mstep_blockmodel!(ϕ::Array{Float64, 3}, B::Array{Float64, 2}, ρ::Float64,
     Y::Array{Float64, 2}, N::Int, K::Int)
@@ -600,23 +634,12 @@ function run_VEM_gauss!(n_iterations::Int, ϕ::Array{Float64, 3}, λ, ν::Array{
         Estep_logitNorm!(ϕ, λ, ν, inv_Σ, μ, N, K)
 
 
-        Mstep_logitNorm!(λ, ν, Σ, σ_2, μ, Γ, X, N, K, P)
+        Mstep_logitNorm_flux!(λ, ν, Σ, σ_2, μ, Γ, X, N, K, P)
         Mstep_blockmodel_gauss!(ϕ, B, like_var, Y, N, K)
         elbows[i_iter] = ELBO_gauss(ϕ, λ, ν, Σ, σ_2, B, μ, Y, K, N, like_var)
         println("iter num: ", i_iter, " ELBO  ", elbows[i_iter])
         println("\n")
-        #println("variance: ",like_var)
-        #=for k in 1:K
-            println(round.(like_var[k,:]; sigdigits=4))
-        end
-        println("\n")
-        for k in 1:K
-            println(round.(B[k,:]; sigdigits=4))
-        end
-        println("\n\n")=#
 
-        #println(round.(σ_2; sigdigits=2))
-        #println(round.(Γ; sigdigits=2))
         #println(round.(Σ; sigdigits=2), "\n\n")
         if isnan(elbows[i_iter])
             break
@@ -674,19 +697,7 @@ function run_VEM_gauss_2!(n_iterations::Int, ϕ::Array{Float64, 3}, λ, ν::Arra
         elbows[i_iter] = ELBO_gauss(ϕ, λ, ν, Σ, σ_2, B, μ, Y, K, N, like_var)
         println("iter num: ", i_iter, " ELBO  ", elbows[i_iter])
         println("\n")
-        #println("variance: ",like_var)
-        #=for k in 1:K
-            println(round.(like_var[k,:]; sigdigits=4))
-        end
-        println("\n")
-        for k in 1:K
-            println(round.(B[k,:]; sigdigits=4))
-        end
-        println("\n\n")=#
 
-        #println(round.(σ_2; sigdigits=2))
-        #println(round.(Γ; sigdigits=2))
-        #println(round.(Σ; sigdigits=2), "\n\n")
         if isnan(elbows[i_iter])
             break
         end
