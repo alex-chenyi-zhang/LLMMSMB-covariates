@@ -1,0 +1,5 @@
+data/MMSBM_input_files/Y/Y_log_chr2_0_39999_100k_oe_gf2.txt
+data/MMSBM_input_files/Y/Y_log_chr2_40000_79999_100k_oe_gf2.txt
+data/MMSBM_input_files/Y/Y_log_chr2_120000_159999_100k_oe_gf2.txt
+data/MMSBM_input_files/Y/Y_log_chr2_160000_199999_100k_oe_gf2.txt
+data/MMSBM_input_files/Y/Y_log_chr2_200000_239999_100k_oe_gf2.txt
