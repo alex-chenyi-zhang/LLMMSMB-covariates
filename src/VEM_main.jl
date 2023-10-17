@@ -956,7 +956,7 @@ function run_inference_gauss_multi_NN(n_iter::Int, start_node::Int, end_node::In
         end
 
         # here we define the flux model that maps X into θ
-        Γ   = Chain(Dense(P, 32, tanh), Dense(32, K))
+        Γ   = Chain(Dense(P, 32, relu), Dense(32, K))
         ps  = Flux.params(Γ)
         #opt = ADAM(0.01) # the value in brackts is the learnin rate for the optmizer
 
@@ -1016,7 +1016,10 @@ function run_inference_gauss_multi_NN(n_iter::Int, start_node::Int, end_node::In
             writedlm(io, like_var)
         end
 
-        @save "$(data_dir)$(i_run)_Gamma_$(N)_$(K)_chr2_50k.bson" Γ
+        model_state = Flux.state(Γ)
+        jldsave("$(data_dir)$(i_run)_Gamma_$(N)_$(K)_chr2_100k.jld2"; model_state)
+
+        #@save "$(data_dir)$(i_run)_Gamma_$(N)_$(K)_chr2_100k.bson" Γ
 
     end
 end

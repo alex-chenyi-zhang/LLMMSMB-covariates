@@ -1,5 +1,5 @@
 using Random, Distributions, StatsBase, LinearAlgebra, DelimitedFiles, Optim, LineSearches, Flux
-using BSON: @save  ## this is to store trained flux model to be loaded for future usage
+using JLD2  ## this is to store trained flux model to be loaded for future usage
 Random.seed!()
 
 # This function computes the approximate ELBO of the model
