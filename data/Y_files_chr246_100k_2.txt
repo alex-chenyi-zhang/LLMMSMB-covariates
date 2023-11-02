@@ -3,3 +3,10 @@ data/MMSBM_input_files/Y/Y_log_chr2_40000_79999_100k_oe_gf2.txt
 data/MMSBM_input_files/Y/Y_log_chr2_120000_159999_100k_oe_gf2.txt
 data/MMSBM_input_files/Y/Y_log_chr2_160000_199999_100k_oe_gf2.txt
 data/MMSBM_input_files/Y/Y_log_chr2_200000_239999_100k_oe_gf2.txt
+data/MMSBM_input_files/Y/Y_log_chr4_0_39999_100k_oe_gf2.txt
+data/MMSBM_input_files/Y/Y_log_chr4_60000_99999_100k_oe_gf2.txt
+data/MMSBM_input_files/Y/Y_log_chr4_100000_139999_100k_oe_gf2.txt
+data/MMSBM_input_files/Y/Y_log_chr4_140000_179999_100k_oe_gf2.txt
+data/MMSBM_input_files/Y/Y_log_chr6_0_39999_100k_oe_gf2.txt
+data/MMSBM_input_files/Y/Y_log_chr6_70000_109999_100k_oe_gf2.txt
+data/MMSBM_input_files/Y/Y_log_chr6_110000_149999_100k_oe_gf2.txt
