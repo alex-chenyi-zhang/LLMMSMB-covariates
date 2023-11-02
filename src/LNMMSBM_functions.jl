@@ -163,6 +163,7 @@ end
 # This function computes the approximate ELBO of the model with the gaussian likelihood
 # but with a shared mean vector for the logistic normal prior instead of a node covariate
 # dependent one.
+#=
 function ELBO_gauss(ϕ::Array{Float64, 3}, λ, ν::Array{Float64, 3},
     Σ::Array{Float64, 2},B::Array{Float64, 2}, μ, Y::Array{Float64, 2}, K::Int, N::Int, like_var::Array{Float64, 2})
     apprELBO = 0.0
@@ -237,7 +238,7 @@ function ELBO_gauss(ϕ::Array{Float64, 3}, λ, ν::Array{Float64, 3},
     end
     return apprELBO
 end
-
+=#
 
 
 #=
@@ -455,13 +456,13 @@ function Mstep_logitNorm_flux_multi!(λ, ν::Vector{Array{Float64, 3}},
     μ = Γ * X
     ####
 
-    Σ .= zeros(K,K)
+    #=Σ .= zeros(K,K)
     for i_region in 1:n_regions
         for i in 1:N
             Σ .+= 1/(N*n_regions) * (ν[i_region][:,:,i] .+ (λ[:,i+(i_region-1)*N] .- μ[:,i+(i_region-1)*N])*(λ[:,i+(i_region-1)*N] .- μ[:,i+(i_region-1)*N])')
         end
     end
-    Σ .= Hermitian(Σ)
+    Σ .= Hermitian(Σ)=#
 end
 
 
@@ -738,9 +739,11 @@ end
 
 function run_VEM_gauss!(n_iterations::Int, ϕ::Vector{Array{Float64, 3}}, λ, ν::Vector{Array{Float64, 3}},
     Σ::Array{Float64, 2}, σ_2::Array{Float64, 1}, B::Array{Float64, 2}, like_var::Array{Float64, 2},
-    μ, Y::Array{Float64, 2}, X::Array{Float64, 2},Γ::Array{Float64, 2}, K::Int, N::Int, P::Int, n_regions::Int)
+    μ, Y::Array{Float64, 2}, X::Array{Float64, 2},Γ::Array{Float64, 2}, K::Int, N::Int, P::Int, n_regions::Int, R::Float64)
 
     elbows = zeros(n_regions, n_iterations)
+    det_Sigma = zeros(n_iterations)
+    det_nu = [zeros(N, n_iterations) for i_reg in 1:n_regions]
     #=for i_region in 1:n_regions
         elbows[i_region, 1] = ELBO_gauss(ϕ[i_region], λ[:,(i_region-1)*N+1:i_region*N], ν[i_region], Σ, σ_2, B, μ[:,(i_region-1)*N+1:i_region*N],  Y[:,(i_region-1)*N+1:i_region*N], K, N, like_var)
         println(i_region, "   ", elbows[i_region,1])
@@ -760,20 +763,34 @@ function run_VEM_gauss!(n_iterations::Int, ϕ::Vector{Array{Float64, 3}}, λ, ν
             #Mstep_logitNorm_multi!(λ, ν, Σ, σ_2, μ, Γ, X, N, K, P, n_regions)
             Mstep_blockmodel_gauss_multi!(ϕ, B, like_var, Y, N, K, n_regions)
         end
+        RΣ = zeros(K,K)
+        for i_region in 1:n_regions
+            for i in 1:N
+                #Σ .+= 1/(N*n_regions) * (ν[i_region][:,:,i] .+ (λ[:,i+(i_region-1)*N] .- μ[:,i+(i_region-1)*N])*(λ[:,i+(i_region-1)*N] .- μ[:,i+(i_region-1)*N])')
+                RΣ .+= (ν[i_region][:,:,i] .+ (λ[:,i+(i_region-1)*N] .- μ[:,i+(i_region-1)*N])*(λ[:,i+(i_region-1)*N] .- μ[:,i+(i_region-1)*N])')
+            end
+        end
+        RΣ .= sqrt(8*R*RΣ/(N*n_regions) + Matrix(1.0I, K, K)) .- Matrix(1.0I, K, K)
+        Σ .= Hermitian(RΣ/(4*R))
+        println("\n Σ:  ", det(Σ))
 
         #Mstep_logitNorm_flux_multi!(λ, ν, Σ, σ_2, μ, Γ, X, N, K, P, n_regions)
         #Mstep_logitNorm_multi!(λ, ν, Σ, σ_2, μ, Γ, X, N, K, P, n_regions)
         #Mstep_blockmodel_gauss_multi!(ϕ, B, like_var, Y, N, K, n_regions)
-
         for i_region in 1:n_regions
-            elbows[i_region, i_iter] = ELBO_gauss(ϕ[i_region], λ[:,(i_region-1)*N+1:i_region*N], ν[i_region], Σ, B, μ[:,(i_region-1)*N+1:i_region*N],  Y[:,(i_region-1)*N+1:i_region*N], K, N, like_var)
+            elbows[i_region, i_iter] = -R*N*tr(Σ) + ELBO_gauss(ϕ[i_region], λ[:,(i_region-1)*N+1:i_region*N], ν[i_region], Σ, B, μ[:,(i_region-1)*N+1:i_region*N],  Y[:,(i_region-1)*N+1:i_region*N], K, N, like_var)
             println("iter num: ", i_iter, " \t region: ", i_region," ELBO  \n", elbows[i_region,i_iter])
+            println(-R*N*tr(Σ))
             if isnan(elbows[i_region, i_iter])
                 break
             end
+            for i in 1:N
+                det_nu[i_region][i, i_iter] = det(ν[i_region][:,:,i])
+            end
         end
+        det_Sigma[i_iter] = det(Σ)
     end
-    return elbows
+    return elbows, det_Sigma, det_nu
 
 end
 
@@ -783,9 +800,11 @@ end
 
 function run_VEM_gauss_NN!(n_iterations::Int, ϕ::Vector{Array{Float64, 3}}, λ, ν::Vector{Array{Float64, 3}},
     Σ::Array{Float64, 2}, B::Array{Float64, 2}, like_var::Array{Float64, 2},
-    μ, Y::Array{Float64, 2}, X::Array{Float64, 2}, Γ, ps, K::Int, N::Int, P::Int, n_regions::Int)
+    μ, Y::Array{Float64, 2}, X::Array{Float64, 2}, Γ, ps, K::Int, N::Int, P::Int, n_regions::Int, R::Float64)
 
     elbows = zeros(n_regions, n_iterations)
+    det_Sigma = zeros(n_iterations)
+    det_nu = [zeros(N, n_iterations) for i_reg in 1:n_regions]
     opt = ADAM(0.01) #the value in the brackets is
     #################################
     # definition of the loss functional to be used to optimize the flux model
@@ -814,25 +833,32 @@ function run_VEM_gauss_NN!(n_iterations::Int, ϕ::Vector{Array{Float64, 3}}, λ,
 
 
 
-        #=Σ .= zeros(K,K)
+        RΣ = zeros(K,K)
         for i_region in 1:n_regions
             for i in 1:N
-                Σ .+= 1/(N*n_regions) * (ν[i_region][:,:,i] .+ (λ[:,i+(i_region-1)*N] .- μ[:,i+(i_region-1)*N])*(λ[:,i+(i_region-1)*N] .- μ[:,i+(i_region-1)*N])')
+                #Σ .+= 1/(N*n_regions) * (ν[i_region][:,:,i] .+ (λ[:,i+(i_region-1)*N] .- μ[:,i+(i_region-1)*N])*(λ[:,i+(i_region-1)*N] .- μ[:,i+(i_region-1)*N])')
+                RΣ .+= (ν[i_region][:,:,i] .+ (λ[:,i+(i_region-1)*N] .- μ[:,i+(i_region-1)*N])*(λ[:,i+(i_region-1)*N] .- μ[:,i+(i_region-1)*N])')
             end
         end
-        Σ .= Hermitian(Σ)=#
-
+        RΣ .= sqrt(8*R*RΣ/(N*n_regions) + Matrix(1.0I, K, K)) .- Matrix(1.0I, K, K)
+        Σ .= Hermitian(RΣ/(4*R))
+        println("\n Σ:  ", det(Σ))
         Mstep_blockmodel_gauss_multi!(ϕ, B, like_var, Y, N, K, n_regions)
 
         for i_region in 1:n_regions
-            elbows[i_region, i_iter] = ELBO_gauss(ϕ[i_region], λ[:,(i_region-1)*N+1:i_region*N], ν[i_region], Σ, B, μ[:,(i_region-1)*N+1:i_region*N],  Y[:,(i_region-1)*N+1:i_region*N], K, N, like_var)
+            elbows[i_region, i_iter] = -R*N*tr(Σ) + ELBO_gauss(ϕ[i_region], λ[:,(i_region-1)*N+1:i_region*N], ν[i_region], Σ, B, μ[:,(i_region-1)*N+1:i_region*N],  Y[:,(i_region-1)*N+1:i_region*N], K, N, like_var)
             println("iter num: ", i_iter, " \t region: ", i_region," ELBO  \n", elbows[i_region,i_iter])
+            println(-R*N*tr(Σ))
             if isnan(elbows[i_region, i_iter])
                 break
             end
+            for i in 1:N
+                det_nu[i_region][i, i_iter] = det(ν[i_region][:,:,i])
+            end
         end
+        det_Sigma[i_iter] = det(Σ)
     end
-    return elbows
+    return elbows, det_Sigma, det_nu
 
 end
 
