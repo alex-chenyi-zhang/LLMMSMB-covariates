@@ -743,7 +743,7 @@ function run_VEM_gauss!(n_iterations::Int, ϕ::Vector{Array{Float64, 3}}, λ, ν
 
     elbows = zeros(n_regions, n_iterations)
     det_Sigma = zeros(n_iterations)
-    det_nu = [zeros(N, n_iterations) for i_reg in 1:n_regions]
+    #det_nu = [zeros(N, n_iterations) for i_reg in 1:n_regions]
     #=for i_region in 1:n_regions
         elbows[i_region, 1] = ELBO_gauss(ϕ[i_region], λ[:,(i_region-1)*N+1:i_region*N], ν[i_region], Σ, σ_2, B, μ[:,(i_region-1)*N+1:i_region*N],  Y[:,(i_region-1)*N+1:i_region*N], K, N, like_var)
         println(i_region, "   ", elbows[i_region,1])
@@ -784,13 +784,13 @@ function run_VEM_gauss!(n_iterations::Int, ϕ::Vector{Array{Float64, 3}}, λ, ν
             if isnan(elbows[i_region, i_iter])
                 break
             end
-            for i in 1:N
-                det_nu[i_region][i, i_iter] = det(ν[i_region][:,:,i])
-            end
+            #for i in 1:N
+            #    det_nu[i_region][i, i_iter] = det(ν[i_region][:,:,i])
+            #end
         end
         det_Sigma[i_iter] = det(Σ)
     end
-    return elbows, det_Sigma, det_nu
+    return elbows, det_Sigma #, det_nu
 
 end
 
@@ -804,7 +804,7 @@ function run_VEM_gauss_NN!(n_iterations::Int, ϕ::Vector{Array{Float64, 3}}, λ,
 
     elbows = zeros(n_regions, n_iterations)
     det_Sigma = zeros(n_iterations)
-    det_nu = [zeros(N, n_iterations) for i_reg in 1:n_regions]
+    #det_nu = [zeros(N, n_iterations) for i_reg in 1:n_regions]
     opt = ADAM(0.01) #the value in the brackets is
     #################################
     # definition of the loss functional to be used to optimize the flux model
@@ -852,13 +852,13 @@ function run_VEM_gauss_NN!(n_iterations::Int, ϕ::Vector{Array{Float64, 3}}, λ,
             if isnan(elbows[i_region, i_iter])
                 break
             end
-            for i in 1:N
-                det_nu[i_region][i, i_iter] = det(ν[i_region][:,:,i])
-            end
+            #for i in 1:N
+            #    det_nu[i_region][i, i_iter] = det(ν[i_region][:,:,i])
+            #end
         end
         det_Sigma[i_iter] = det(Σ)
     end
-    return elbows, det_Sigma, det_nu
+    return elbows, det_Sigma #, det_nu
 
 end
 
