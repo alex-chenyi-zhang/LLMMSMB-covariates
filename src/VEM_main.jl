@@ -871,7 +871,7 @@ end
    be a simple linear transformation). For now we start with a simple 2 layer NN.
    The loss function that we choose if the KL-divergence between the tranformed X
    and the lambda variational parameters =#
-function run_inference_gauss_multi_NN(n_iter::Int, start_node::Int, end_node::Int, n_runs::Int, covariate_file_names::String, map_file_names::String, K::Int, R::Float64)
+function run_inference_gauss_multi_NN(n_iter::Int, n_runs::Int, covariate_file_names::String, map_file_names::String, K::Int, R::Float64)
     println("trace norm NN!! yay R = ", R)
     io = open(covariate_file_names, "r")
     covariate_files = readdlm(io, String)
@@ -887,7 +887,7 @@ function run_inference_gauss_multi_NN(n_iter::Int, start_node::Int, end_node::In
     println(contact_map_files[1], "\t" , covariate_files[1])
     # read the first files from list
     io = open(covariate_files[1],"r")
-    X_i = readdlm(io, Float64; header=true)[1][1:end-1,:]
+    X_i = readdlm(io, Float64; header=true)[1]#[1:end-1,:]
     close(io)
 
     io = open(contact_map_files[1],"r")
@@ -905,7 +905,7 @@ function run_inference_gauss_multi_NN(n_iter::Int, start_node::Int, end_node::In
     for i_region in 2:n_regions
         println(contact_map_files[i_region], "\t" , covariate_files[i_region])
         io = open(covariate_files[i_region],"r")
-        X_i = readdlm(io, Float64; header=true)[1][1:end-1,:]
+        X_i = readdlm(io, Float64; header=true)[1]#[1:end-1,:]
         close(io)
 
         io = open(contact_map_files[i_region],"r")
@@ -961,7 +961,8 @@ function run_inference_gauss_multi_NN(n_iter::Int, start_node::Int, end_node::In
         end
 
         # here we define the flux model that maps X into θ
-        Γ   = Chain(Dense(P, 32, relu), Dense(32, K))
+        #Γ   = Chain(Dense(P, 32, relu), Dense(32, K))
+        Γ   = Chain(Dense(P, 32, relu), Dense(32, 32, relu), Dense(32, K))
         ps  = Flux.params(Γ)
         #opt = ADAM(0.01) # the value in brackts is the learnin rate for the optmizer
 
@@ -984,7 +985,7 @@ function run_inference_gauss_multi_NN(n_iter::Int, start_node::Int, end_node::In
         elbows, det_Sigma = run_VEM_gauss_NN!(n_iter, ϕ, λ, ν, Σ, B, like_var, μ, Y, X, Γ, ps, K, N, P, n_regions, R)
 
         μ = Γ(X);
-        data_dir = "data/results/100k_multiregion_NN_regularized$(R)/"
+        data_dir = "data/results/imr90_250k_multiregion_NN_regularized$(R)/"
 
         if !isdir(data_dir)
             mkdir(data_dir)
@@ -1014,22 +1015,22 @@ function run_inference_gauss_multi_NN(n_iter::Int, start_node::Int, end_node::In
             #end
         end
 
-        open("$(data_dir)B_$(N)_$(K)_chr2_100k.txt", "a") do io
+        open("$(data_dir)B_$(N)_$(K)_chr2_250k.txt", "a") do io
             writedlm(io, B)
         end
-        open("$(data_dir)Sigma_$(N)_$(K)_chr2_100k.txt", "a") do io
+        open("$(data_dir)Sigma_$(N)_$(K)_chr2_250k.txt", "a") do io
             writedlm(io, Σ)
         end
-        open("$(data_dir)like_var_$(N)_$(K)_chr2_100k.txt", "a") do io
+        open("$(data_dir)like_var_$(N)_$(K)_chr2_250k.txt", "a") do io
             writedlm(io, like_var)
         end
 
-        open("$(data_dir)det_Sigma_$(N)_$(K)_chr2_100k.txt", "a") do io
+        open("$(data_dir)det_Sigma_$(N)_$(K)_chr2_250k.txt", "a") do io
             writedlm(io, det_Sigma')
         end
 
         model_state = Flux.state(Γ)
-        jldsave("$(data_dir)$(i_run)_Gamma_$(N)_$(K)_100k.jld2"; model_state)
+        jldsave("$(data_dir)$(i_run)_Gamma_$(N)_$(K)_250k.jld2"; model_state)
 
         #@save "$(data_dir)$(i_run)_Gamma_$(N)_$(K)_chr2_100k.bson" Γ
 
