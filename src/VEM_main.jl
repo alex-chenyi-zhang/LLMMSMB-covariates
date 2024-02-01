@@ -985,7 +985,7 @@ function run_inference_gauss_multi_NN(n_iter::Int, n_runs::Int, covariate_file_n
         elbows, det_Sigma = run_VEM_gauss_NN!(n_iter, ϕ, λ, ν, Σ, B, like_var, μ, Y, X, Γ, ps, K, N, P, n_regions, R)
 
         μ = Γ(X);
-        data_dir = "data/results/imr90_250k_multiregion_NN_regularized$(R)/"
+        data_dir = "data/results/imr90_50k_multiregion_NN_regularized$(R)/"
 
         if !isdir(data_dir)
             mkdir(data_dir)
@@ -1015,22 +1015,22 @@ function run_inference_gauss_multi_NN(n_iter::Int, n_runs::Int, covariate_file_n
             #end
         end
 
-        open("$(data_dir)B_$(N)_$(K)_chr2_250k.txt", "a") do io
+        open("$(data_dir)B_$(N)_$(K)_chr21_50k.txt", "a") do io
             writedlm(io, B)
         end
-        open("$(data_dir)Sigma_$(N)_$(K)_chr2_250k.txt", "a") do io
+        open("$(data_dir)Sigma_$(N)_$(K)_chr21_50k.txt", "a") do io
             writedlm(io, Σ)
         end
-        open("$(data_dir)like_var_$(N)_$(K)_chr2_250k.txt", "a") do io
+        open("$(data_dir)like_var_$(N)_$(K)_chr21_50k.txt", "a") do io
             writedlm(io, like_var)
         end
 
-        open("$(data_dir)det_Sigma_$(N)_$(K)_chr2_250k.txt", "a") do io
+        open("$(data_dir)det_Sigma_$(N)_$(K)_chr21_50k.txt", "a") do io
             writedlm(io, det_Sigma')
         end
 
         model_state = Flux.state(Γ)
-        jldsave("$(data_dir)$(i_run)_Gamma_$(N)_$(K)_250k.jld2"; model_state)
+        jldsave("$(data_dir)$(i_run)_Gamma_$(N)_$(K)_50k.jld2"; model_state)
 
         #@save "$(data_dir)$(i_run)_Gamma_$(N)_$(K)_chr2_100k.bson" Γ
 
