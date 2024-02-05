@@ -1,0 +1,1 @@
+data/IMR90_input_files/X/X_chr14_20000_99999_100k_filt.txt

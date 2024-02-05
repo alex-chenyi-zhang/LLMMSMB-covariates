@@ -1,1 +1,0 @@
-data/IMR90_input_files/X/X_chr21_10400_46699_50k_filt.txt

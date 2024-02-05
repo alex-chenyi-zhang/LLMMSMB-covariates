@@ -1,1 +1,0 @@
-data/IMR90_input_files/Y/Y_log_chr2_0_85749_250k_oe_gf1.txt
