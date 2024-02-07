@@ -985,7 +985,7 @@ function run_inference_gauss_multi_NN(n_iter::Int, n_runs::Int, covariate_file_n
         elbows, det_Sigma = run_VEM_gauss_NN!(n_iter, ϕ, λ, ν, Σ, B, like_var, μ, Y, X, Γ, ps, K, N, P, n_regions, R)
 
         μ = Γ(X);
-        data_dir = "data/results/imr90_$(covariate_files[i_region][27:end-4])_NN_regularized$(R)/"
+        data_dir = "data/results/imr90_$(covariate_files[1][27:end-4])_NN_regularized$(R)/"
 
         if !isdir(data_dir)
             mkdir(data_dir)

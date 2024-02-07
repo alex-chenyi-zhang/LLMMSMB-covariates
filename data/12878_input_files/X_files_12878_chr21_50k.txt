@@ -1,0 +1,1 @@
+data/12878_input_files/X/X_chr21_15000_44999_50k_filt.txt
