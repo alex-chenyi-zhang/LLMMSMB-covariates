@@ -586,7 +586,7 @@ end
 
 
 function Mstep_blockmodel_gauss_multi!(ϕ::Vector{Array{Float64, 3}}, B::Array{Float64, 2}, like_var::Array{Float64, 2},
-    Y::Array{Float64, 2}, N::Int, K::Int, n_regions::Int)
+    Y::Vector{Array{Float64, 2}}, Ns::Array{Int,1}, K::Int, n_regions::Int)
     lv = 0.
     learn_r = 0.9
     cum_den = 0.
@@ -596,12 +596,12 @@ function Mstep_blockmodel_gauss_multi!(ϕ::Vector{Array{Float64, 3}}, B::Array{F
             num = 0.
             den = 0.
             for i_region in 1:n_regions
-                for j in 1:N
-                    for i in 1:N
+                for j in 1:Ns[i_region]
+                    for i in 1:Ns[i_region]
                         phi_prod = ϕ[i_region][i,j,k]*ϕ[i_region][j,i,g]
-                        num += phi_prod*Y[i,j+(i_region-1)*N]
+                        num += phi_prod*Y[i_region][i,j]
                         den += phi_prod
-                        num_gauss += phi_prod * (Y[i,j+(i_region-1)*N] - B[k,g])^2
+                        num_gauss += phi_prod * (Y[i_region][i,j] - B[k,g])^2
                         #lv  += phi_prod * (Y[i,j] - B[k,g])^2
                     end
                 end
@@ -800,7 +800,16 @@ end
 
 function run_VEM_gauss_NN!(n_iterations::Int, ϕ::Vector{Array{Float64, 3}}, λ, ν::Vector{Array{Float64, 3}},
     Σ::Array{Float64, 2}, B::Array{Float64, 2}, like_var::Array{Float64, 2},
-    μ, Y::Array{Float64, 2}, X::Array{Float64, 2}, Γ, ps, K::Int, N::Int, P::Int, n_regions::Int, R::Float64)
+    μ, Y::Vector{Array{Float64, 2}}, X::Array{Float64, 2}, Γ, ps, K::Int, Ns::Array{Int,1}, P::Int, n_regions::Int, R::Float64)
+
+    Ncum = 0
+    N_s = ones(Int, n_regions)
+    N_e = ones(Int, n_regions)
+    for i_region in 1:n_regions
+        N_s[i_region] = Ncum + 1
+        N_e[i_region] = Ncum + Ns[i_region]
+        Ncum += Ns[i_region]
+    end
 
     elbows = zeros(n_regions, n_iterations)
     det_Sigma = zeros(n_iterations)
@@ -816,11 +825,15 @@ function run_VEM_gauss_NN!(n_iterations::Int, ϕ::Vector{Array{Float64, 3}}, λ,
     for i_iter in 1:n_iterations
         inv_Σ = inv(Σ)
         for i_region in 1:n_regions
-            Estep_logitNorm!(ϕ[i_region], @view(λ[:,(i_region-1)*N+1:i_region*N]), ν[i_region], inv_Σ, Float64.(μ[:,(i_region-1)*N+1:i_region*N]), N, K)
+            #Estep_logitNorm!(ϕ[i_region], @view(λ[:,(i_region-1)*N+1:i_region*N]), ν[i_region], inv_Σ, Float64.(μ[:,(i_region-1)*N+1:i_region*N]), N, K)
+            Estep_logitNorm!(ϕ[i_region], @view(λ[:,N_s[i_region]:N_e[i_region]]), ν[i_region], inv_Σ, Float64.(μ[:,N_s[i_region]:N_e[i_region]]), Ns[i_region], K)
             for m in 1:5
-                Estep_multinomial_gauss!(ϕ[i_region], @view(λ[:,(i_region-1)*N+1:i_region*N]), B, Y[:,(i_region-1)*N+1:i_region*N], N, K, like_var)
+                #Estep_multinomial_gauss!(ϕ[i_region], @view(λ[:,(i_region-1)*N+1:i_region*N]), B, Y[:,(i_region-1)*N+1:i_region*N], N, K, like_var)
+                Estep_multinomial_gauss!(ϕ[i_region], @view(λ[:,N_s[i_region]:N_e[i_region]]), B, Y[i_region], Ns[i_region], K, like_var)
             end
-            Estep_logitNorm!(ϕ[i_region], @view(λ[:,(i_region-1)*N+1:i_region*N]), ν[i_region], inv_Σ, (μ[:,(i_region-1)*N+1:i_region*N]), N, K)
+            #Estep_logitNorm!(ϕ[i_region], @view(λ[:,(i_region-1)*N+1:i_region*N]), ν[i_region], inv_Σ, (μ[:,(i_region-1)*N+1:i_region*N]), N, K)
+            Estep_logitNorm!(ϕ[i_region], @view(λ[:,N_s[i_region]:N_e[i_region]]), ν[i_region], inv_Σ, Float64.(μ[:,N_s[i_region]:N_e[i_region]]), Ns[i_region], K)
+
             n_flux = 15
             for i_flux in 1:n_flux
                 gs = gradient(()-> L(Float32.(X), Float32.(λ)), ps)
@@ -835,20 +848,20 @@ function run_VEM_gauss_NN!(n_iterations::Int, ϕ::Vector{Array{Float64, 3}}, λ,
 
         RΣ = zeros(K,K)
         for i_region in 1:n_regions
-            for i in 1:N
+            for i in 1:Ns[i_region]
                 #Σ .+= 1/(N*n_regions) * (ν[i_region][:,:,i] .+ (λ[:,i+(i_region-1)*N] .- μ[:,i+(i_region-1)*N])*(λ[:,i+(i_region-1)*N] .- μ[:,i+(i_region-1)*N])')
-                RΣ .+= (ν[i_region][:,:,i] .+ (λ[:,i+(i_region-1)*N] .- μ[:,i+(i_region-1)*N])*(λ[:,i+(i_region-1)*N] .- μ[:,i+(i_region-1)*N])')
+                RΣ .+= (ν[i_region][:,:,i] .+ (λ[:,i+N_s[i_region]-1] .- μ[:,i+N_s[i_region]-1])*(λ[:,i+N_s[i_region]-1] .- μ[:,i+N_s[i_region]-1])')
             end
         end
-        RΣ .= sqrt(8*R*RΣ/(N*n_regions) + Matrix(1.0I, K, K)) .- Matrix(1.0I, K, K)
+        RΣ .= sqrt(8*R*RΣ/(Ncum) + Matrix(1.0I, K, K)) .- Matrix(1.0I, K, K)
         Σ .= Hermitian(RΣ/(4*R))
         println("\n Σ:  ", det(Σ))
-        Mstep_blockmodel_gauss_multi!(ϕ, B, like_var, Y, N, K, n_regions)
+        Mstep_blockmodel_gauss_multi!(ϕ, B, like_var, Y, Ns, K, n_regions)
 
         for i_region in 1:n_regions
-            elbows[i_region, i_iter] = -R*N*tr(Σ) + ELBO_gauss(ϕ[i_region], λ[:,(i_region-1)*N+1:i_region*N], ν[i_region], Σ, B, μ[:,(i_region-1)*N+1:i_region*N],  Y[:,(i_region-1)*N+1:i_region*N], K, N, like_var)
+            elbows[i_region, i_iter] = -R*Ns[i_region]*tr(Σ) + ELBO_gauss(ϕ[i_region], λ[:,N_s[i_region]:N_e[i_region]], ν[i_region], Σ, B, μ[:,N_s[i_region]:N_e[i_region]],  Y[i_region], K, Ns[i_region], like_var)
             println("iter num: ", i_iter, " \t region: ", i_region," ELBO  \n", elbows[i_region,i_iter])
-            println(-R*N*tr(Σ))
+            println(-R*Ns[i_region]*tr(Σ))
             if isnan(elbows[i_region, i_iter])
                 break
             end

@@ -886,23 +886,51 @@ function run_inference_gauss_multi_NN(n_iter::Int, n_runs::Int, covariate_file_n
 
     println(contact_map_files[1], "\t" , covariate_files[1])
     # read the first files from list
-    io = open(covariate_files[1],"r")
+    #=io = open(covariate_files[1],"r")
     X_i = readdlm(io, Float64; header=true)[1]#[1:end-1,:]
     close(io)
 
     io = open(contact_map_files[1],"r")
     Y_i = readdlm(io, Float64)
-    close(io)
+    close(io)=#
 
-    N = length(X_i[1,:])
-    P = length(X_i[:,1])
+    #N = length(X_i[1,:])
+    Ns = ones(Int, n_regions)
+    Ncum = 0
+
+    N_starts = ones(Int, n_regions)
+    N_ends = ones(Int, n_regions)
+    P = 0
+
+    for i_region in 1:n_regions
+        println(contact_map_files[i_region], "\t" , covariate_files[i_region])
+        io = open(covariate_files[i_region],"r")
+        X_i = readdlm(io, Float64; header=true)[1]#[1:end-1,:]
+        close(io)
+
+        Ns[i_region] = length(X_i[1,:])
+        N_starts[i_region] = Ncum + 1
+        N_ends[i_region] = Ncum + Ns[i_region]
+        Ncum += Ns[i_region]
+        P = length(X_i[:,1])
+    end
+    println("Ns = ", Ns)
+    println("Nsstart = ", N_starts)
+    println("Nends = ", N_ends)
+    println("Ntot: ", Ncum)
+
+
 
     # data structures for aggregated covariates and contact maps
-    X = zeros(P,N*n_regions)
-    Y = zeros(N, N*n_regions)
-    X[:,1:N] .= X_i
-    Y[:,1:N] .= Y_i
-    for i_region in 2:n_regions
+    #X = zeros(P,N*n_regions)
+    #Y = zeros(N, N*n_regions)
+    #X[:,1:N] .= X_i
+    #Y[:,1:N] .= Y_i
+    X = zeros(P, Ncum)
+    Y = [zeros(Ns[i_region], Ns[i_region]) for i_region in 1:n_regions]
+    #X[:,1:Ns[1]] .= X_i
+    #Y[1] .= Y_i
+    for i_region in 1:n_regions
         println(contact_map_files[i_region], "\t" , covariate_files[i_region])
         io = open(covariate_files[i_region],"r")
         X_i = readdlm(io, Float64; header=true)[1]#[1:end-1,:]
@@ -911,30 +939,28 @@ function run_inference_gauss_multi_NN(n_iter::Int, n_runs::Int, covariate_file_n
         io = open(contact_map_files[i_region],"r")
         Y_i = readdlm(io, Float64)
         close(io)
-        X[:,(i_region-1)*N+1:i_region*N] .= X_i
-        Y[:,(i_region-1)*N+1:i_region*N] .= Y_i
+        X[:,N_starts[i_region]:N_ends[i_region]] .= X_i
+        Y[i_region] .= Y_i
     end
-    println(length(X[1,:]))
-    println(length(Y[1,:]))
-    println(N, "\t", P)
+    println(Ns, "\t", P)
 
     for i_run in 1:n_runs
         ##############################    Initialize all parameters
 
         println("run number: ", i_run)
-        ϕ = [ones(N,N,K) for i_region in 1:n_regions]
+        ϕ = [ones(Ns[i_region],Ns[i_region],K) for i_region in 1:n_regions]
         for i_region in 1:n_regions
-            for i in 1:N
-                for j in 1:N
+            for i in 1:Ns[i_region]
+                for j in 1:Ns[i_region]
                     ϕ[i_region][i,j,:] = rand(Dirichlet(K,0.5))
                 end
             end
         end
 
-        λ = randn(K, N*n_regions)
-        ν = [zeros(K,K,N) for i_region in 1:n_regions]
+        λ = randn(K, Ncum)
+        ν = [zeros(K,K,Ns[i_region]) for i_region in 1:n_regions]
         for i_region in n_regions
-            for i in 1:N
+            for i in 1:Ns[i_region]
                 ν[i_region][:,:,i] = rand(Wishart(K,Matrix(.5I,K, K)))
             end
         end
@@ -971,68 +997,68 @@ function run_inference_gauss_multi_NN(n_iter::Int, n_runs::Int, covariate_file_n
         #    Γ[k,:] .= randn(P)* sqrt(σ_2[k])
         #end
 
-        μ = zeros(K,N*n_regions)
+        μ = zeros(K,Ncum)
         #μ = Γ * X;
         μ = Γ(Float32.(X));
         for i_region in 1:n_regions
-            for i in 1:N
+            for i in 1:Ns[i_region]
                 ϕ[i_region][i,i,:] .= 0
             end
         end
         #println(μ)
         ###### end of initialization
 
-        elbows, det_Sigma = run_VEM_gauss_NN!(n_iter, ϕ, λ, ν, Σ, B, like_var, μ, Y, X, Γ, ps, K, N, P, n_regions, R)
+        elbows, det_Sigma = run_VEM_gauss_NN!(n_iter, ϕ, λ, ν, Σ, B, like_var, μ, Y, X, Γ, ps, K, Ns, P, n_regions, R)
 
         μ = Γ(X);
-        data_dir = "data/results/gm12878$(covariate_files[1][27:end-4])_NN_regularized$(R)/"
+        data_dir = "data/results/gm$(covariate_file_names[32:end-4])_NN_regularized$(R)/"
+        println(data_dir)
 
         if !isdir(data_dir)
             mkdir(data_dir)
         end
 
         for i_region in 1:n_regions
-            nu_matrix = zeros(N,K*K)
+            #=nu_matrix = zeros(N,K*K)
             for i in 1:N
                 nu_matrix[i,:] .= [ν[i_region][:,:,i]...]
-            end
+            end=#
             println((covariate_files[i_region][27:end]))
 
-            open("$(data_dir)elbows_$(N)_$(K)$(covariate_files[i_region][27:end])", "a") do io
+            open("$(data_dir)elbows_$(Ns[i_region])_$(K)$(covariate_files[i_region][27:end])", "a") do io
                 writedlm(io, elbows[i_region,:]')
             end
             #open("$(data_dir)nu_$(N)_$(K)$(covariate_files[i_region][27:end])", "a") do io
             #    writedlm(io, nu_matrix)
             #end
-            open("$(data_dir)lambda_$(N)_$(K)$(covariate_files[i_region][27:end])", "a") do io
-                writedlm(io, λ[:,(i_region-1)*N+1:i_region*N])
+            open("$(data_dir)lambda_$(Ns[i_region])_$(K)$(covariate_files[i_region][27:end])", "a") do io
+                writedlm(io, λ[:, N_starts[i_region]:N_ends[i_region]])
             end
-            open("$(data_dir)mu_$(N)_$(K)$(covariate_files[i_region][27:end])", "a") do io
-                writedlm(io, μ[:,(i_region-1)*N+1:i_region*N])
+            open("$(data_dir)mu_$(Ns[i_region])_$(K)$(covariate_files[i_region][27:end])", "a") do io
+                writedlm(io, μ[:, N_starts[i_region]:N_ends[i_region]])
             end
             #open("$(data_dir)det_nu_$(N)_$(K)$(covariate_files[i_region][27:end])", "a") do io
             #    writedlm(io, det_nu[i_region]')
             #end
         end
 
-        open("$(data_dir)B_$(N)_$(K).txt", "a") do io
+        open("$(data_dir)B_$(K).txt", "a") do io
             writedlm(io, B)
         end
-        open("$(data_dir)Sigma_$(N)_$(K).txt", "a") do io
+        open("$(data_dir)Sigma_$(K).txt", "a") do io
             writedlm(io, Σ)
         end
-        open("$(data_dir)like_var_$(N)_$(K).txt", "a") do io
+        open("$(data_dir)like_var_$(K).txt", "a") do io
             writedlm(io, like_var)
         end
 
-        open("$(data_dir)det_Sigma_$(N)_$(K).txt", "a") do io
+        open("$(data_dir)det_Sigma_$(K).txt", "a") do io
             writedlm(io, det_Sigma')
         end
 
         model_state = Flux.state(Γ)
-        jldsave("$(data_dir)$(i_run)_Gamma_$(N)_$(K).jld2"; model_state)
+        jldsave("$(data_dir)$(i_run)_Gamma_$(K).jld2"; model_state)
 
         #@save "$(data_dir)$(i_run)_Gamma_$(N)_$(K)_chr2_100k.bson" Γ
-
     end
 end

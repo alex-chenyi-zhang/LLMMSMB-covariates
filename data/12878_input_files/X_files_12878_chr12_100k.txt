@@ -1,1 +1,1 @@
-12878_input_files/X/X_chr12_100k_filt.txt
+data/12878_input_files/X/X_chr12_100k_filt.txt

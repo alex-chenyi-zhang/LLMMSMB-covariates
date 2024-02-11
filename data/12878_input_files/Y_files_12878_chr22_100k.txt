@@ -1,1 +1,1 @@
-12878_input_files/Y/Y_log_chr22_100k_oe_gf1.txt
+data/12878_input_files/Y/Y_log_chr22_100k_oe_gf1.txt

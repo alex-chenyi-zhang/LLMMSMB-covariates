@@ -1,1 +1,1 @@
-12878_input_files/X/X_chr19_100k.txt
+data/12878_input_files/X/X_chr19_100k.txt

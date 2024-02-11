@@ -1,6 +1,5 @@
-12878_input_files/Y/Y_log_chr12_100k_oe.txt
-12878_input_files/Y/Y_log_chr14_100k_oe.txt
-12878_input_files/Y/Y_log_chr16_100k_oe.txt
-12878_input_files/Y/Y_log_chr18_100k_oe.txt
-12878_input_files/Y/Y_log_chr20_100k_oe.txt
-12878_input_files/Y/Y_log_chr22_100k_oe.txt
+data/12878_input_files/Y/Y_log_chr13_100k_oe.txt
+data/12878_input_files/Y/Y_log_chr15_100k_oe.txt
+data/12878_input_files/Y/Y_log_chr17_100k_oe.txt
+data/12878_input_files/Y/Y_log_chr19_100k_oe.txt
+data/12878_input_files/Y/Y_log_chr21_100k_oe.txt
