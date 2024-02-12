@@ -11,6 +11,6 @@ res = ["_100k.txt", "_100k.txt", "_100k.txt", "_100k.txt", "_100k.txt", "_100k.t
 
 Threads.@threads for j in 1:11
     for i in 1:7
-    	run_inference_gauss_multi_NN(iters[i], 6, "$(dir)$(chrs[j])$(res[j])", "$(dir)$(chrs[j])$(res[j])", Ks[i], R)
+    	run_inference_gauss_multi_NN(iters[i], 6, "$(dirX)$(chrs[j])$(res[j])", "$(dirY)$(chrs[j])$(res[j])", Ks[i], R)
     end
 end
