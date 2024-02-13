@@ -1,0 +1,5 @@
+data/12878_input_files/Y/Y_log_chr2_500k_oe.txt
+data/12878_input_files/Y/Y_log_chr4_500k_oe.txt
+data/12878_input_files/Y/Y_log_chr6_500k_oe.txt
+data/12878_input_files/Y/Y_log_chr8_500k_oe.txt
+data/12878_input_files/Y/Y_log_chr10_500k_oe.txt

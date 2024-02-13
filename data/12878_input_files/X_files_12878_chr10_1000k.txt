@@ -1,0 +1,1 @@
+data/12878_input_files/X/X_chr10_1000k_filt.txt

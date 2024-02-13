@@ -1,0 +1,5 @@
+data/12878_input_files/X/X_chr2_500k.txt
+data/12878_input_files/X/X_chr4_500k.txt
+data/12878_input_files/X/X_chr6_500k.txt
+data/12878_input_files/X/X_chr8_500k.txt
+data/12878_input_files/X/X_chr10_500k.txt

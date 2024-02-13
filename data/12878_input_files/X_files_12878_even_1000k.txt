@@ -1,0 +1,5 @@
+data/12878_input_files/X/X_chr2_1000k_filt.txt
+data/12878_input_files/X/X_chr4_1000k_filt.txt
+data/12878_input_files/X/X_chr6_1000k_filt.txt
+data/12878_input_files/X/X_chr8_1000k_filt.txt
+data/12878_input_files/X/X_chr10_1000k_filt.txt
