@@ -814,7 +814,8 @@ function run_VEM_gauss_NN!(n_iterations::Int, ϕ::Vector{Array{Float64, 3}}, λ,
     elbows = zeros(n_regions, n_iterations)
     det_Sigma = zeros(n_iterations)
     #det_nu = [zeros(N, n_iterations) for i_reg in 1:n_regions]
-    opt = ADAM(0.01) #the value in the brackets is
+    # opt = ADAM(0.01) #the value in the brackets is
+    opt = Descent(0.01)
     #################################
     # definition of the loss functional to be used to optimize the flux model
     L(a,b) = (Flux.Losses.kldivergence(softmax(Γ(a)), softmax(b)))
@@ -834,7 +835,7 @@ function run_VEM_gauss_NN!(n_iterations::Int, ϕ::Vector{Array{Float64, 3}}, λ,
             #Estep_logitNorm!(ϕ[i_region], @view(λ[:,(i_region-1)*N+1:i_region*N]), ν[i_region], inv_Σ, (μ[:,(i_region-1)*N+1:i_region*N]), N, K)
             Estep_logitNorm!(ϕ[i_region], @view(λ[:,N_s[i_region]:N_e[i_region]]), ν[i_region], inv_Σ, Float64.(μ[:,N_s[i_region]:N_e[i_region]]), Ns[i_region], K)
 
-            n_flux = 15
+            n_flux = 30
             for i_flux in 1:n_flux
                 gs = gradient(()-> L(Float32.(X), Float32.(λ)), ps)
                 Flux.Optimise.update!(opt, ps, gs)

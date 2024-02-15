@@ -988,7 +988,8 @@ function run_inference_gauss_multi_NN(n_iter::Int, n_runs::Int, covariate_file_n
 
         # here we define the flux model that maps X into θ
         #Γ   = Chain(Dense(P, 32, relu), Dense(32, K))
-        Γ   = Chain(Dense(P, 32, relu), Dense(32, 32, relu), Dense(32, K))
+        #Γ   = Chain(Dense(P, 32, relu), Dense(32, 32, relu), Dense(32, K))
+        Γ   = Chain(Dense(P, 64, relu), Dense(64, 64, relu), Dense(64, 32, relu), Dense(32, K))
         ps  = Flux.params(Γ)
         #opt = ADAM(0.01) # the value in brackts is the learnin rate for the optmizer
 

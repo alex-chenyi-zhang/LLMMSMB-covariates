@@ -1,0 +1,7 @@
+data/12878_input_files/Y/Y_log_chr9_250k_oe_gf1.txt
+data/12878_input_files/Y/Y_log_chr11_250k_oe_gf1.txt
+data/12878_input_files/Y/Y_log_chr13_250k_oe_gf1.txt
+data/12878_input_files/Y/Y_log_chr15_250k_oe_gf1.txt
+data/12878_input_files/Y/Y_log_chr17_250k_oe_gf1.txt
+data/12878_input_files/Y/Y_log_chr19_250k_oe_gf1.txt
+data/12878_input_files/Y/Y_log_chr21_250k_oe_gf1.txt
