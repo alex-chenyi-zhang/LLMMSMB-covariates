@@ -2,7 +2,7 @@ include("src/VEM_main.jl")
 
 R = 0.1
 Ks = [2, 3, 4, 5, 6, 10, 12, 14]
-iters = [200, 200, 200, 300, 300, 300, 350, 350]
+iters = [400, 400, 500, 600, 700, 850, 950, 950]
 dirX = "data/12878_input_files/X_files_12878"
 dirY = "data/12878_input_files/Y_files_12878"
 

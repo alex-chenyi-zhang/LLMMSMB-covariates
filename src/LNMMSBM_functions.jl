@@ -339,8 +339,10 @@ end
 
 function Estep_multinomial_gauss!(ϕ::Array{Float64, 3}, λ, B::Array{Float64, 2},
      Y::Array{Float64, 2}, N::Int, K::Int, like_var::Array{Float64, 2})
-    for i in 1:N
-        for j in 1:N
+    #for i in 1:N
+    for i in sample(1:N, div(N,4), replace=false)
+        #for j in 1:N
+        for j in sample(1:N, div(N,4), replace=false)
             if i != j
                 for k in 1:K
                     logPi = λ[k,i]
@@ -588,7 +590,7 @@ end
 function Mstep_blockmodel_gauss_multi!(ϕ::Vector{Array{Float64, 3}}, B::Array{Float64, 2}, like_var::Array{Float64, 2},
     Y::Vector{Array{Float64, 2}}, Ns::Array{Int,1}, K::Int, n_regions::Int)
     lv = 0.
-    learn_r = 0.9
+    learn_r = 0.1
     cum_den = 0.
     for k in 1:K
         for g in 1:K
@@ -596,8 +598,10 @@ function Mstep_blockmodel_gauss_multi!(ϕ::Vector{Array{Float64, 3}}, B::Array{F
             num = 0.
             den = 0.
             for i_region in 1:n_regions
-                for j in 1:Ns[i_region]
-                    for i in 1:Ns[i_region]
+                #for j in 1:Ns[i_region]
+                    #for i in 1:Ns[i_region]
+                for j in sample(1:Ns[i_region], div(Ns[i_region], 4))
+                    for i in sample(1:Ns[i_region], div(Ns[i_region], 4))
                         phi_prod = ϕ[i_region][i,j,k]*ϕ[i_region][j,i,g]
                         num += phi_prod*Y[i_region][i,j]
                         den += phi_prod

@@ -872,7 +872,7 @@ end
    The loss function that we choose if the KL-divergence between the tranformed X
    and the lambda variational parameters =#
 function run_inference_gauss_multi_NN(n_iter::Int, n_runs::Int, covariate_file_names::String, map_file_names::String, K::Int, R::Float64)
-    println("trace norm NN!! yay R = ", R)
+    println("STOCHA!  trace norm NN!! yay R = ", R)
     io = open(covariate_file_names, "r")
     covariate_files = readdlm(io, String)
     close(io)
@@ -1012,7 +1012,7 @@ function run_inference_gauss_multi_NN(n_iter::Int, n_runs::Int, covariate_file_n
         elbows, det_Sigma = run_VEM_gauss_NN!(n_iter, ϕ, λ, ν, Σ, B, like_var, μ, Y, X, Γ, ps, K, Ns, P, n_regions, R)
 
         μ = Γ(X);
-        data_dir = "data/results/gm$(covariate_file_names[32:end-4])_NN_regularized$(R)/"
+        data_dir = "data/results/SVI_gm$(covariate_file_names[32:end-4])_NN_regularized$(R)/"
         println(data_dir)
 
         if !isdir(data_dir)
