@@ -1,0 +1,6 @@
+data/HCT116_input_files/Y/Y_log_chr12_100k_oe.txt
+data/HCT116_input_files/Y/Y_log_chr14_100k_oe.txt
+data/HCT116_input_files/Y/Y_log_chr16_100k_oe.txt
+data/HCT116_input_files/Y/Y_log_chr18_100k_oe.txt
+data/HCT116_input_files/Y/Y_log_chr20_100k_oe.txt
+data/HCT116_input_files/Y/Y_log_chr22_100k_oe.txt

@@ -1,0 +1,6 @@
+data/HCT116_input_files/X/X_chr12_100k.txt
+data/HCT116_input_files/X/X_chr14_100k.txt
+data/HCT116_input_files/X/X_chr16_100k.txt
+data/HCT116_input_files/X/X_chr18_100k.txt
+data/HCT116_input_files/X/X_chr20_100k.txt
+data/HCT116_input_files/X/X_chr22_100k.txt

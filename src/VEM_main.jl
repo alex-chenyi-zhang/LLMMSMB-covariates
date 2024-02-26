@@ -1012,7 +1012,7 @@ function run_inference_gauss_multi_NN(n_iter::Int, n_runs::Int, covariate_file_n
         elbows, det_Sigma = run_VEM_gauss_NN!(n_iter, ϕ, λ, ν, Σ, B, like_var, μ, Y, X, Γ, ps, K, Ns, P, n_regions, R)
 
         μ = Γ(X);
-        data_dir = "data/results/SVI_gm$(covariate_file_names[32:end-4])_NN_regularized$(R)/"
+        data_dir = "data/results/SVI_$(covariate_file_names[33:end-4])_NN_regularized$(R)/"
         println(data_dir)
 
         if !isdir(data_dir)
@@ -1024,18 +1024,18 @@ function run_inference_gauss_multi_NN(n_iter::Int, n_runs::Int, covariate_file_n
             for i in 1:N
                 nu_matrix[i,:] .= [ν[i_region][:,:,i]...]
             end=#
-            println((covariate_files[i_region][27:end]))
+            println((covariate_files[i_region][28:end]))
 
-            open("$(data_dir)elbows_$(Ns[i_region])_$(K)$(covariate_files[i_region][27:end])", "a") do io
+            open("$(data_dir)elbows_$(Ns[i_region])_$(K)$(covariate_files[i_region][28:end])", "a") do io
                 writedlm(io, elbows[i_region,:]')
             end
             #open("$(data_dir)nu_$(N)_$(K)$(covariate_files[i_region][27:end])", "a") do io
             #    writedlm(io, nu_matrix)
             #end
-            open("$(data_dir)lambda_$(Ns[i_region])_$(K)$(covariate_files[i_region][27:end])", "a") do io
+            open("$(data_dir)lambda_$(Ns[i_region])_$(K)$(covariate_files[i_region][28:end])", "a") do io
                 writedlm(io, λ[:, N_starts[i_region]:N_ends[i_region]])
             end
-            open("$(data_dir)mu_$(Ns[i_region])_$(K)$(covariate_files[i_region][27:end])", "a") do io
+            open("$(data_dir)mu_$(Ns[i_region])_$(K)$(covariate_files[i_region][28:end])", "a") do io
                 writedlm(io, μ[:, N_starts[i_region]:N_ends[i_region]])
             end
             #open("$(data_dir)det_nu_$(N)_$(K)$(covariate_files[i_region][27:end])", "a") do io
