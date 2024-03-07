@@ -4,11 +4,11 @@ R = 0.1
 # Ks = [14]
 # iters = [950]
 
-Ks = [5, 6]
-iters = [700, 800]
+Ks = [4, 10]
+iters = [600, 950]
 
-dirX = "data/GM12878_input_files/X_files_GM12878"
-dirY = "data/GM12878_input_files/Y_files_GM12878"
+dirX = "data/HCT116_input_files/X_files_HCT116"
+dirY = "data/HCT116_input_files/Y_files_HCT116"
 
 suffix = ["_100k.txt"]
 
