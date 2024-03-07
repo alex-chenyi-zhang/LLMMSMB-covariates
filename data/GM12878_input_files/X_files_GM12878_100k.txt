@@ -1,0 +1,10 @@
+data/GM12878_input_files/X/X_chr13_100k_filt.txt
+data/GM12878_input_files/X/X_chr14_100k_filt.txt
+data/GM12878_input_files/X/X_chr15_100k_filt.txt
+data/GM12878_input_files/X/X_chr16_100k_filt.txt
+data/GM12878_input_files/X/X_chr17_100k_filt.txt
+data/GM12878_input_files/X/X_chr18_100k_filt.txt
+data/GM12878_input_files/X/X_chr19_100k_filt.txt
+data/GM12878_input_files/X/X_chr20_100k_filt.txt
+data/GM12878_input_files/X/X_chr21_100k_filt.txt
+data/GM12878_input_files/X/X_chr22_100k_filt.txt
